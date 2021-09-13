@@ -337,6 +337,7 @@ Once your model is fine-tuned, you can save it with its tokenizer in the followi
 
 .. code-block::
 
+    save_directory = "local_directory_pt"
     tokenizer.save_pretrained(save_directory)
     model.save_pretrained(save_directory)
 
@@ -350,6 +351,14 @@ loading a saved PyTorch model in a TensorFlow model, use :func:`~transformers.TF
     from transformers import TFAutoModel
     tokenizer = AutoTokenizer.from_pretrained(save_directory)
     model = TFAutoModel.from_pretrained(save_directory, from_pt=True)
+
+Similarly, you can save this tensorflow model:
+
+.. code-block::
+
+    save_directory = "local_directory_tf"
+    tokenizer.save_pretrained(save_directory)
+    model.save_pretrained(save_directory)
 
 and if you are loading a saved TensorFlow model in a PyTorch model, you should use the following code:
 
