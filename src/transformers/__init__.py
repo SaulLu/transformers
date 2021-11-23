@@ -1083,7 +1083,6 @@ if is_torch_available():
     _import_structure["models.markuplm"].extend(
         [
             "MARKUPLM_PRETRAINED_MODEL_ARCHIVE_LIST",
-            "MarkupLMForMultipleChoice",
             "MarkupLMForQuestionAnswering",
             "MarkupLMForSequenceClassification",
             "MarkupLMForTokenClassification",
@@ -3010,7 +3009,6 @@ if TYPE_CHECKING:
         from .models.marian import MarianForCausalLM, MarianModel, MarianMTModel
         from .models.markuplm import (
             MARKUPLM_PRETRAINED_MODEL_ARCHIVE_LIST,
-            MarkupLMForMultipleChoice,
             MarkupLMForQuestionAnswering,
             MarkupLMForSequenceClassification,
             MarkupLMForTokenClassification,
