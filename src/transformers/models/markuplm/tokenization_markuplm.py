@@ -757,13 +757,17 @@ class MarkupLMTokenizer(PreTrainedTokenizer):
             **kwargs,
         )
 
+        tokens = []
+        xpath_tags_seq = []
+        xpath_subs_seq = []
+        pair_tokens = []
+        pair_xpath_tags_seq = []
+        pair_xpath_subs_seq = []
+        
         if text_pair is None:
             # text = HTML string
             all_doc_strings, string2xtag_seq, string2xsubs_seq = self.get_three_from_single(text)
 
-            tokens = []
-            xpath_tags_seq = []
-            xpath_subs_seq = []
             for i, doc_string in enumerate(all_doc_strings):
                 tokens_in_span = self.tokenize(doc_string, **kwargs)
                 tokens += tokens_in_span
@@ -772,17 +776,17 @@ class MarkupLMTokenizer(PreTrainedTokenizer):
         else:
             # text = question, text_pair = HTML string
             tokens = self.tokenize(text, **kwargs)
+            # TODO: add xpath_tags_seq and xpath_subs_seq
+            xpath_tags_seq = []
+            xpath_subs_seq = []
 
             all_doc_strings, string2xtag_seq, string2xsubs_seq = self.get_three_from_single(text_pair)
 
-            pair_tokens = []
-            xpath_tags_seq = []
-            xpath_subs_seq = []
             for i, doc_string in enumerate(all_doc_strings):
                 tokens_in_span = self.tokenize(doc_string, **kwargs)
                 pair_tokens += tokens_in_span
-                xpath_tags_seq += [self.xpath_tags_transfer(string2xtag_seq[i])] * len(tokens_in_span)
-                xpath_subs_seq += [self.xpath_tags_transfer(string2xsubs_seq[i])] * len(tokens_in_span)
+                pair_xpath_tags_seq += [self.xpath_tags_transfer(string2xtag_seq[i])] * len(tokens_in_span)
+                pair_xpath_subs_seq += [self.xpath_tags_transfer(string2xsubs_seq[i])] * len(tokens_in_span)
 
         # Create ids + pair_ids
         ids = self.convert_tokens_to_ids(tokens)
@@ -808,9 +812,23 @@ class MarkupLMTokenizer(PreTrainedTokenizer):
         # Truncation: Handle max sequence length
         overflowing_tokens = []
         if truncation_strategy != TruncationStrategy.DO_NOT_TRUNCATE and max_length and total_len > max_length:
-            (ids, pair_ids, labels, overflowing_tokens, overflowing_labels,) = self.truncate_sequences(
+            (
                 ids,
+                xpath_tags_seq,
+                xpath_subs_seq,
+                pair_ids,
+                pair_xpath_tags_seq,
+                pair_xpath_subs_seq,
+                overflowing_tokens,
+                overflowing_xpath_tags_seq,
+                overflowing_xpath_subs_seq,
+            ) = self.truncate_sequences(
+                ids,
+                xpath_tags_seq=xpath_tags_seq,
+                xpath_subs_seq=xpath_subs_seq,
                 pair_ids=pair_ids,
+                pair_xpath_tags_seq=pair_xpath_tags_seq,
+                pair_xpath_subs_seq=pair_xpath_subs_seq,
                 num_tokens_to_remove=total_len - max_length,
                 truncation_strategy=truncation_strategy,
                 stride=stride,
