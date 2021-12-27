@@ -50,10 +50,10 @@ class MarkupLMTokenizerFast(RobertaTokenizerFast):
     r"""
     Constructs a "Fast" MarkupLMTokenizer.
 
-    :class:`~transformers.MArkupLMTokenizerFast` is identical to :class:`~transformers.RobertaTokenizerFast` and runs
+    [`MArkupLMTokenizerFast`] is identical to [`RobertaTokenizerFast`] and runs
     end-to-end tokenization.
 
-    Refer to superclass :class:`~transformers.RobertaTokenizerFast` for usage examples and documentation concerning
+    Refer to superclass [`RobertaTokenizerFast`] for usage examples and documentation concerning
     parameters.
     """
 

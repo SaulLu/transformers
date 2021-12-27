@@ -763,7 +763,7 @@ class MarkupLMTokenizer(PreTrainedTokenizer):
         pair_tokens = []
         pair_xpath_tags_seq = []
         pair_xpath_subs_seq = []
-        
+
         if text_pair is None:
             # text = HTML string
             all_doc_strings, string2xtag_seq, string2xsubs_seq = self.get_three_from_single(text)
@@ -851,6 +851,8 @@ class MarkupLMTokenizer(PreTrainedTokenizer):
 
         if return_overflowing_tokens:
             encoded_inputs["overflowing_tokens"] = overflowing_tokens
+            encoded_inputs["overflowing_xpath_tags_seq"] = overflowing_xpath_tags_seq
+            encoded_inputs["overflowing_xpath_subs_seq"] = overflowing_xpath_subs_seq
             encoded_inputs["num_truncated_tokens"] = total_len - max_length
 
         # Add special tokens
