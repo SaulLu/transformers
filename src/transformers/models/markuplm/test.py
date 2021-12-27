@@ -2,7 +2,8 @@ from transformers import MarkupLMTokenizer
 
 
 tokenizer = MarkupLMTokenizer(
-    vocab_file="/Users/NielsRogge/Documents/TAPAS/tapas-base-masklm/vocab.txt",
+    vocab_file="/Users/NielsRogge/Documents/vocab.json",
+    merges_file="/Users/NielsRogge/Documents/merges.txt",
     tags_dict="/Users/NielsRogge/Documents/tags_dict.json",
 )
 
@@ -29,7 +30,7 @@ for k, v in encoding.items():
 # print(tokenizer.decode(encoding.input_ids.squeeze().tolist()))
 
 # test batched
-encoding = tokenizer(multi_html_strings, padding="max_length", truncation=True, return_tensors="pt")
+encoding = tokenizer(multi_html_strings, padding="max_length", max_length=512, truncation=True, return_tensors="pt")
 
 for k, v in encoding.items():
     print(k, v.shape)
