@@ -155,14 +155,13 @@ def subfinder(mylist, pattern):
 class MarkupLMTokenizer(PreTrainedTokenizer):
     r"""
     Construct a MarkupLM tokenizer. Based on WordPiece. [`MarkupLMTokenizer`] can be used to
-    turn words, word-level bounding boxes and optional word labels to token-level `input_ids`,
-    `attention_mask`, `token_type_ids`, `bbox`, and optional `labels` (for token classification).
+    turn HTML strings into to token-level `input_ids`, `attention_mask`, `token_type_ids`,
+    `xpath_tags_seq` and `xpath_tags_seq`.
 
     This tokenizer inherits from [`PreTrainedTokenizer`] which contains most of the main methods.
     Users should refer to this superclass for more information regarding those methods.
 
-    [`MarkupLMTokenizer`] runs end-to-end tokenization: punctuation splitting and wordpiece. It
-    also turns the word-level bounding boxes into token-level bounding boxes.
+    [`MarkupLMTokenizer`] runs end-to-end tokenization: punctuation splitting and wordpiece.
 
     """
 
@@ -455,7 +454,7 @@ class MarkupLMTokenizer(PreTrainedTokenizer):
     ) -> BatchEncoding:
         """
         Main method to tokenize and prepare for the model one or several sequence(s) or one or several pair(s) of
-        sequences with word-level normalized bounding boxes and optional labels.
+        sequences.
 
         Args:
             text (`str`, `List[str]`):
@@ -499,7 +498,7 @@ class MarkupLMTokenizer(PreTrainedTokenizer):
         if text_pair is not None:
             is_batched = isinstance(text, (list, tuple))
         else:
-            is_batched = isinstance(text, (list, tuple)) and text and isinstance(text[0], (list, tuple))
+            is_batched = isinstance(text, (list, tuple)) and text and isinstance(text[0], str)
 
         if is_batched:
             if text_pair is not None and len(text) != len(text_pair):
@@ -579,6 +578,9 @@ class MarkupLMTokenizer(PreTrainedTokenizer):
                 "To use this feature, change your tokenizer to one deriving from "
                 "transformers.PreTrainedTokenizerFast."
             )
+
+        print("we're here")
+        print("Batch text or text pairs:", batch_text_or_text_pairs)
 
         batch_outputs = self._batch_prepare_for_model(
             batch_text_or_text_pairs=batch_text_or_text_pairs,
@@ -743,10 +745,6 @@ class MarkupLMTokenizer(PreTrainedTokenizer):
         *truncation_strategy = longest_first* or *True*, it is not possible to return overflowing tokens. Such a
         combination of arguments will raise an error.
 
-        Word-level `boxes` are turned into token-level `bbox`. If provided, word-level `word_labels` are
-        turned into token-level `labels`. The word label is used for the first token of the word, while remaining
-        tokens are labeled with -100, such that they will be ignored by the loss function.
-
         Args:
             text (`str`, `List[str]`):
                 The first sequence to be encoded. This can be a string or a list of strings.
@@ -783,9 +781,8 @@ class MarkupLMTokenizer(PreTrainedTokenizer):
         else:
             # text = question, text_pair = HTML string
             tokens = self.tokenize(text, **kwargs)
-            # TODO: add xpath_tags_seq and xpath_subs_seq
-            xpath_tags_seq = []
-            xpath_subs_seq = []
+            xpath_tags_seq = [self.pad_xpath_tags_seq] * len(tokens)
+            xpath_subs_seq = [self.pad_xpath_subs_seq] * len(tokens)
 
             all_doc_strings, string2xtag_seq, string2xsubs_seq = self.get_three_from_single(text_pair)
 
@@ -1097,11 +1094,11 @@ class MarkupLMTokenizer(PreTrainedTokenizer):
                     )
                 if "xpath_tags_seq" in encoded_inputs:
                     encoded_inputs["xpath_tags_seq"] = (
-                        encoded_inputs["xpath_tags_seq"] + [self.pad_token_box] * difference
+                        encoded_inputs["xpath_tags_seq"] + [self.pad_xpath_tags_seq] * difference
                     )
                 if "xpath_subs_seq" in encoded_inputs:
                     encoded_inputs["xpath_subs_seq"] = (
-                        encoded_inputs["xpath_subs_seq"] + [self.pad_token_label] * difference
+                        encoded_inputs["xpath_subs_seq"] + [self.pad_xpath_subs_seq] * difference
                     )
                 if "special_tokens_mask" in encoded_inputs:
                     encoded_inputs["special_tokens_mask"] = encoded_inputs["special_tokens_mask"] + [1] * difference
@@ -1114,11 +1111,11 @@ class MarkupLMTokenizer(PreTrainedTokenizer):
                         "token_type_ids"
                     ]
                 if "xpath_tags_seq" in encoded_inputs:
-                    encoded_inputs["xpath_tags_seq"] = [self.pad_token_box] * difference + encoded_inputs[
+                    encoded_inputs["xpath_tags_seq"] = [self.pad_xpath_tags_seq] * difference + encoded_inputs[
                         "xpath_tags_seq"
                     ]
                 if "xpath_subs_seq" in encoded_inputs:
-                    encoded_inputs["xpath_subs_seq"] = [self.pad_token_label] * difference + encoded_inputs[
+                    encoded_inputs["xpath_subs_seq"] = [self.pad_xpath_subs_seq] * difference + encoded_inputs[
                         "xpath_subs_seq"
                     ]
                 if "special_tokens_mask" in encoded_inputs:

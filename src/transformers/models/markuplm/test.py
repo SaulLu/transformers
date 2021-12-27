@@ -20,9 +20,16 @@ with open(page_name_2) as f:
 with open(page_name_3) as f:
     multi_html_strings.append(f.read())
 
+# test not batched
 encoding = tokenizer(single_html_string, return_tensors="pt")
 
 for k, v in encoding.items():
     print(k, v.shape)
 
-print(tokenizer.decode(encoding.input_ids.squeeze().tolist()))
+# print(tokenizer.decode(encoding.input_ids.squeeze().tolist()))
+
+# test batched
+encoding = tokenizer(multi_html_strings, padding="max_length", truncation=True, return_tensors="pt")
+
+for k, v in encoding.items():
+    print(k, v.shape)
