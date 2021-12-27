@@ -22,10 +22,7 @@ import sys
 import unicodedata
 from typing import Dict, List, Optional, Tuple, Union
 
-import bs4
-from bs4 import BeautifulSoup
-
-from ...file_utils import PaddingStrategy, TensorType, add_end_docstrings
+from ...file_utils import PaddingStrategy, TensorType, add_end_docstrings, is_bs4_available, requires_backends
 from ...tokenization_utils import PreTrainedTokenizer, _is_control, _is_punctuation, _is_whitespace
 from ...tokenization_utils_base import (
     ENCODE_KWARGS_DOCSTRING,
@@ -40,6 +37,13 @@ from ...utils import logging
 
 
 logger = logging.get_logger(__name__)
+
+import bs4
+
+# TODO solve soft dependency
+# if is_bs4_available():
+from bs4 import BeautifulSoup
+
 
 VOCAB_FILES_NAMES = {"vocab_file": "vocab.txt"}
 
@@ -188,6 +192,7 @@ class MarkupLMTokenizer(PreTrainedTokenizer):
         additional_special_tokens: Optional[List[str]] = None,
         **kwargs
     ):
+        # requires_backends(self, "bs4")
         super().__init__(
             do_lower_case=do_lower_case,
             do_basic_tokenize=do_basic_tokenize,
@@ -233,6 +238,8 @@ class MarkupLMTokenizer(PreTrainedTokenizer):
         self.pad_width = pad_width
         self.unk_tag_id = len(self.tags_dict)
         self.pad_tag_id = self.unk_tag_id + 1
+        self.pad_xpath_tags_seq = [self.pad_tag_id] * self.max_depth
+        self.pad_xpath_subs_seq = [self.pad_width] * self.max_depth
 
     def xpath_tags_transfer(self, xpath_tags_seq_by_str):
         if len(xpath_tags_seq_by_str) > self.max_depth:

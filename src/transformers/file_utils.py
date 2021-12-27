@@ -127,6 +127,14 @@ else:
     _flax_available = False
 
 
+_bs4_available = importlib.util.find_spec("beautifulsoup4") is not None
+try:
+    _bs4_version = importlib_metadata.version("beautifulsoup4")
+    logger.debug(f"Successfully imported beautifulsoup4 version {_bs4_version}")
+except importlib_metadata.PackageNotFoundError:
+    _bs4_available = False
+
+
 _datasets_available = importlib.util.find_spec("datasets") is not None
 try:
     # Check we're not importing a "datasets" directory somewhere but the actual library by trying to grab the version
@@ -452,6 +460,10 @@ def is_torch_tpu_available():
     return importlib.util.find_spec("torch_xla.core.xla_model") is not None
 
 
+def is_bs4_available():
+    return _bs4_available
+
+
 def is_datasets_available():
     return _datasets_available
 
@@ -716,6 +728,13 @@ installation page: https://github.com/google/flax and follow the ones that match
 
 
 # docstyle-ignore
+BS4_IMPORT_ERROR = """
+{0} requires the beautiful soup library but it was not found in your environment. You can install it with pip as
+follows: pip install beautifulsoup4.
+"""
+
+
+# docstyle-ignore
 SCATTER_IMPORT_ERROR = """
 {0} requires the torch-scatter library but it was not found in your environment. You can install it with pip as
 explained here: https://github.com/rusty1s/pytorch_scatter.
@@ -789,6 +808,7 @@ PYCTCDECODE_IMPORT_ERROR = """
 
 BACKENDS_MAPPING = OrderedDict(
     [
+        ("bs4", (is_bs4_available, BS4_IMPORT_ERROR)),
         ("datasets", (is_datasets_available, DATASETS_IMPORT_ERROR)),
         ("detectron2", (is_detectron2_available, DETECTRON2_IMPORT_ERROR)),
         ("faiss", (is_faiss_available, FAISS_IMPORT_ERROR)),
