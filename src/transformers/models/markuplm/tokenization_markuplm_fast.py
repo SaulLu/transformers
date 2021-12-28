@@ -41,6 +41,13 @@ from .tokenization_markuplm import MARKUPLM_ENCODE_PLUS_ADDITIONAL_KWARGS_DOCSTR
 
 logger = logging.get_logger(__name__)
 
+import bs4
+
+# TODO solve soft dependency
+# if is_bs4_available():
+from bs4 import BeautifulSoup
+
+
 VOCAB_FILES_NAMES = {"vocab_file": "vocab.json", "merges_file": "merges.txt", "tokenizer_file": "tokenizer.json"}
 
 PRETRAINED_VOCAB_FILES_MAP = {
@@ -137,6 +144,7 @@ class MarkupLMTokenizerFast(PreTrainedTokenizerFast):
         super().__init__(
             vocab_file,
             merges_file,
+            tags_dict=tags_dict,
             tokenizer_file=tokenizer_file,
             errors=errors,
             bos_token=bos_token,
@@ -158,6 +166,7 @@ class MarkupLMTokenizerFast(PreTrainedTokenizerFast):
             self.backend_tokenizer.pre_tokenizer = pre_tok_class(**pre_tok_state)
 
         self.add_prefix_space = add_prefix_space
+        self.tags_dict = json.load(open(tags_dict, "r"))
 
         tokenizer_component = "post_processor"
         tokenizer_component_instance = getattr(self.backend_tokenizer, tokenizer_component, None)
@@ -193,6 +202,62 @@ class MarkupLMTokenizerFast(PreTrainedTokenizerFast):
         self.pad_tag_id = self.unk_tag_id + 1
         self.pad_xpath_tags_seq = [self.pad_tag_id] * self.max_depth
         self.pad_xpath_subs_seq = [self.pad_width] * self.max_depth
+
+    def xpath_tags_transfer(self, xpath_tags_seq_by_str):
+        if len(xpath_tags_seq_by_str) > self.max_depth:
+            xpath_tags_seq_by_str = xpath_tags_seq_by_str[: self.max_depth]
+        mid = [self.tags_dict.get(i, self.unk_tag_id) for i in xpath_tags_seq_by_str]
+        mid += [self.pad_tag_id] * (self.max_depth - len(mid))
+        return mid
+
+    def xpath_subs_transfer(self, xpath_subs_seq_by_int):
+        if len(xpath_subs_seq_by_int) > self.max_depth:
+            xpath_subs_seq_by_int = xpath_subs_seq_by_int[: self.max_depth]
+        mid = [min(i, self.max_width) for i in xpath_subs_seq_by_int]
+        mid += [self.pad_width] * (self.max_depth - len(mid))
+        return mid
+
+    def xpath_soup(self, element):
+        xpath_tags = []
+        xpath_subscripts = []
+        child = element if element.name else element.parent
+        for parent in child.parents:  # type: bs4.element.Tag
+            siblings = parent.find_all(child.name, recursive=False)
+            xpath_tags.append(child.name)
+            xpath_subscripts.append(
+                0 if 1 == len(siblings) else next(i for i, s in enumerate(siblings, 1) if s is child)
+            )
+            child = parent
+        xpath_tags.reverse()
+        xpath_subscripts.reverse()
+        return xpath_tags, xpath_subscripts
+
+    def get_three_from_single(self, html_string):
+        html_code = BeautifulSoup(html_string, "html.parser")
+
+        all_doc_strings = []
+        string2xtag_seq = []
+        string2xsubs_seq = []
+
+        for element in html_code.descendants:
+            if type(element) == bs4.element.NavigableString:
+                if type(element.parent) != bs4.element.Tag:
+                    continue
+
+                text_in_this_tag = html.unescape(element).strip()
+                if not text_in_this_tag:
+                    continue
+
+                all_doc_strings.append(text_in_this_tag)
+
+                xpath_tags, xpath_subscripts = self.xpath_soup(element)
+                string2xtag_seq.append(xpath_tags)
+                string2xsubs_seq.append(xpath_subscripts)
+
+        assert len(all_doc_strings) == len(string2xtag_seq)
+        assert len(all_doc_strings) == len(string2xsubs_seq)
+
+        return all_doc_strings, string2xtag_seq, string2xsubs_seq
 
     @add_end_docstrings(ENCODE_KWARGS_DOCSTRING, MARKUPLM_ENCODE_PLUS_ADDITIONAL_KWARGS_DOCSTRING)
     def __call__(
@@ -334,6 +399,7 @@ class MarkupLMTokenizerFast(PreTrainedTokenizerFast):
         truncation_strategy: TruncationStrategy = TruncationStrategy.DO_NOT_TRUNCATE,
         max_length: Optional[int] = None,
         stride: int = 0,
+        is_split_into_words: bool = False,
         pad_to_multiple_of: Optional[int] = None,
         return_tensors: Optional[str] = None,
         return_token_type_ids: Optional[bool] = None,
@@ -357,23 +423,23 @@ class MarkupLMTokenizerFast(PreTrainedTokenizerFast):
             pad_to_multiple_of=pad_to_multiple_of,
         )
 
-        three_dict = {'all_doc_strings': [],
-                      'string2xtag_seq': [],
-                      'string2xsubs_seq': []}
+        three_dict = {"all_doc_strings": [], "string2xtag_seq": [], "string2xsubs_seq": []}
 
-        # in order to tokenize, 
-        for html_string in batch_text_or_text_pairs:
-            if is_pair:
-                html_string = html_string[1]
+        # first, create all_doc_strings
+        for batch_text_or_text_pair in batch_text_or_text_pairs:
+            html_string = batch_text_or_text_pair[1] if is_pair else batch_text_or_text_pair
             all_doc_strings, string2xtag_seq, string2xsubs_seq = self.get_three_from_single(html_string)
-            three_dict['all_doc_strings'].append(all_doc_strings)
-            three_dict['string2xtag_seq'].append(string2xtag_seq)
-            three_dict['string2xsubs_seq'].append(string2xsubs_seq)
+            if is_pair:
+                three_dict["all_doc_strings"].append((batch_text_or_text_pair[0].split(), all_doc_strings))
+            else:
+                three_dict["all_doc_strings"].append(all_doc_strings)
+            three_dict["string2xtag_seq"].append(string2xtag_seq)
+            three_dict["string2xsubs_seq"].append(string2xsubs_seq)
 
         encodings = self._tokenizer.encode_batch(
-            three_dict['all_doc_strings'],
+            three_dict["all_doc_strings"],
             add_special_tokens=add_special_tokens,
-            is_pretokenized=False,
+            is_pretokenized=True,
         )
 
         # Convert encoding to dict
@@ -418,7 +484,7 @@ class MarkupLMTokenizerFast(PreTrainedTokenizerFast):
 
         for input_ids in sanitized_tokens["input_ids"]:
             self._eventual_warn_about_too_long_sequence(input_ids, max_length, verbose)
-        
+
         # create the token-level xpath_tags_seq and xpath_subs_seq
         xpath_tags_seq = []
         xpath_subs_seq = []
@@ -427,31 +493,27 @@ class MarkupLMTokenizerFast(PreTrainedTokenizerFast):
                 original_index = sanitized_tokens["overflow_to_sample_mapping"][batch_index]
             else:
                 original_index = batch_index
-            xpath_tags_seq_example = []
-            xpath_subs_seq_example = []
-            for id, sequence_id, word_id in zip(
-                sanitized_tokens["input_ids"][batch_index],
-                sanitized_encodings[batch_index].sequence_ids,
-                sanitized_encodings[batch_index].word_ids,
-            ):
-                if word_id is not None:
-                    if is_pair and sequence_id == 0:
-                        xpath_tags_seq_example.append(self.pad_token_box)
-                        xpath_subs_seq_example.append(self.pad_token_box)
-                    else:
-                        xpath_tags_seq_example.append(boxes[original_index][word_id])
-                        xpath_subs_seq_example.append(subs[original_index][word_id])
-                else:
-                    if id in [self.cls_token_id, self.sep_token_id, self.pad_token_id]:
-                        xpath_tags_seq_example.append(self.pad_xpath_tags_seq)
-                        xpath_subs_seq_example.append(self.pad_xpath_subs_seq)
-                        raise ValueError("Id not recognized")
-            xpath_tags_seq.append(xpath_tags_seq_example)
-            xpath_subs_seq.append(xpath_subs_seq_example)
+
+            word_ids = sanitized_encodings[original_index].word_ids
+            xpath_tags_in_span = [
+                self.pad_xpath_tags_seq
+                if corr_word_id is None
+                else self.xpath_tags_transfer(three_dict["string2xtag_seq"][original_index][corr_word_id])
+                for corr_word_id in word_ids
+            ]
+            xpath_tags_seq.append(xpath_tags_in_span)
+
+            xpath_subs_in_span = [
+                self.pad_xpath_subs_seq
+                if corr_word_id is None
+                else self.xpath_subs_transfer(three_dict["string2xsubs_seq"][original_index][corr_word_id])
+                for corr_word_id in word_ids
+            ]
+            xpath_subs_seq.append(xpath_subs_in_span)
 
         sanitized_tokens["xpath_tags_seq"] = xpath_tags_seq
         sanitized_tokens["xpath_subs_seq"] = xpath_subs_seq
-        
+
         return BatchEncoding(sanitized_tokens, sanitized_encodings, tensor_type=return_tensors)
 
     def _encode_plus(
@@ -463,6 +525,7 @@ class MarkupLMTokenizerFast(PreTrainedTokenizerFast):
         truncation_strategy: TruncationStrategy = TruncationStrategy.DO_NOT_TRUNCATE,
         max_length: Optional[int] = None,
         stride: int = 0,
+        is_split_into_words: bool = False,
         pad_to_multiple_of: Optional[int] = None,
         return_tensors: Optional[bool] = None,
         return_token_type_ids: Optional[bool] = None,
@@ -485,6 +548,7 @@ class MarkupLMTokenizerFast(PreTrainedTokenizerFast):
             truncation_strategy=truncation_strategy,
             max_length=max_length,
             stride=stride,
+            is_split_into_words=is_split_into_words,
             pad_to_multiple_of=pad_to_multiple_of,
             return_tensors=return_tensors,
             return_token_type_ids=return_token_type_ids,

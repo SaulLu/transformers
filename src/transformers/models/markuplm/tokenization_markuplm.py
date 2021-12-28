@@ -847,7 +847,8 @@ class MarkupLMTokenizer(PreTrainedTokenizer):
         if text_pair is None:
             # text = HTML string
             all_doc_strings, string2xtag_seq, string2xsubs_seq = self.get_three_from_single(text)
-
+            print("Length of all docstrings:", len(all_doc_strings))
+            print("All doc strings:", all_doc_strings)
             for i, doc_string in enumerate(all_doc_strings):
                 tokens_in_span = self.tokenize(doc_string, **kwargs)
                 tokens += tokens_in_span
