@@ -378,14 +378,6 @@ class MarkupLMTokenizerFast(PreTrainedTokenizerFast):
                 **kwargs,
             )
 
-    # def tokenize(self, text: str, pair: Optional[str] = None, add_special_tokens: bool = False, **kwargs) -> List[str]:
-    #     batched_input = [(text, pair)] if pair else [text]
-    #     encodings = self._tokenizer.encode_batch(
-    #         batched_input, add_special_tokens=add_special_tokens, is_pretokenized=False, **kwargs
-    #     )
-
-    #     return encodings[0].tokens
-
     def _batch_encode_plus(
         self,
         batch_text_or_text_pairs: Union[
@@ -488,13 +480,13 @@ class MarkupLMTokenizerFast(PreTrainedTokenizerFast):
         # create the token-level xpath_tags_seq and xpath_subs_seq
         xpath_tags_seq = []
         xpath_subs_seq = []
-        for batch_index in range(len(sanitized_tokens["input_ids"])):
+        for i, batch_index in enumerate(range(len(sanitized_tokens["input_ids"]))):
             if return_overflowing_tokens:
                 original_index = sanitized_tokens["overflow_to_sample_mapping"][batch_index]
             else:
                 original_index = batch_index
-
-            word_ids = sanitized_encodings[original_index].word_ids
+                
+            word_ids = sanitized_encodings[batch_index].word_ids
             xpath_tags_in_span = [
                 self.pad_xpath_tags_seq
                 if corr_word_id is None

@@ -22,34 +22,36 @@ with open(page_name_3) as f:
     multi_html_strings.append(f.read())
 
 # test not batched
-encoding = tokenizer(single_html_string, return_tensors="pt")
+encoding = tokenizer(single_html_string, max_length=512, stride=128, padding="max_length", truncation=True, return_tensors="pt",
+return_overflowing_tokens=True)
 
+print(len(encoding))
 for k, v in encoding.items():
     print(k, v.shape)
+
+# # print(tokenizer.decode(encoding.input_ids.squeeze().tolist()))
+
+# # test batched
+# encoding = tokenizer(multi_html_strings, padding="max_length", max_length=512, truncation=True, return_tensors="pt")
+
+# for k, v in encoding.items():
+#     print(k, v.shape)
+
+
+# # test pair not batched
+# question = "what's her name?"
+# encoding = tokenizer(
+#     question, single_html_string, padding="max_length", max_length=30, truncation=True, return_tensors="pt"
+# )
 
 # print(tokenizer.decode(encoding.input_ids.squeeze().tolist()))
 
-# test batched
-encoding = tokenizer(multi_html_strings, padding="max_length", max_length=512, truncation=True, return_tensors="pt")
+# # test pair batched
 
-for k, v in encoding.items():
-    print(k, v.shape)
+# questions = ["what's her name?", "can you tell me the address?"]
+# encoding = tokenizer(
+#     questions, multi_html_strings, padding="max_length", max_length=30, truncation=True, return_tensors="pt"
+# )
 
-
-# test pair not batched
-question = "what's her name?"
-encoding = tokenizer(
-    question, single_html_string, padding="max_length", max_length=30, truncation=True, return_tensors="pt"
-)
-
-print(tokenizer.decode(encoding.input_ids.squeeze().tolist()))
-
-# test pair batched
-
-questions = ["what's her name?", "can you tell me the address?"]
-encoding = tokenizer(
-    questions, multi_html_strings, padding="max_length", max_length=30, truncation=True, return_tensors="pt"
-)
-
-print(tokenizer.decode(encoding.input_ids[0].tolist()))
-print(tokenizer.decode(encoding.input_ids[1].tolist()))
+# print(tokenizer.decode(encoding.input_ids[0].tolist()))
+# print(tokenizer.decode(encoding.input_ids[1].tolist()))

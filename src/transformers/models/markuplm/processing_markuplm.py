@@ -23,8 +23,16 @@ import torch
 import bs4
 from bs4 import BeautifulSoup
 
-from .tokenization_markuplm import MarkupLMTokenizer
-from .tokenization_markuplm_fast import MarkupLMTokenizerFast
+from transformers import MarkupLMTokenizerFast, RobertaTokenizer, RobertaTokenizerFast
+from transformers.file_utils import is_torch_onnx_dict_inputs_support_available
+
+
+huggingface_tokenizer = MarkupLMTokenizerFast(
+    vocab_file="/Users/NielsRogge/Documents/vocab.json",
+    merges_file="/Users/NielsRogge/Documents/merges.txt",
+    tags_dict="/Users/NielsRogge/Documents/tags_dict.json",
+    add_prefix_space=True,
+)
 
 
 class MarkupLMProcessor:
@@ -259,7 +267,7 @@ class MarkupLMProcessor:
     PAD_XPATH_TAGS_SEQ = [PAD_TAG_ID] * MAX_DEPTH
     PAD_XPATH_SUBS_SEQ = [PAD_WIDTH] * MAX_DEPTH
 
-    def __init__(self, tokenizer: Union[MarkupLMTokenizer, MarkupLMTokenizerFast]):
+    def __init__(self, tokenizer: Union[RobertaTokenizer, RobertaTokenizerFast]):
         self.tokenizer = tokenizer
 
     def xpath_tags_transfer(self, xpath_tags_seq_by_str):
@@ -459,11 +467,9 @@ class MarkupLMProcessor:
 
 
 if __name__ == "__main__":
-    from .modeling_markuplm import MarkupLMModel
-
-    page_name_1 = "page1.html"
-    page_name_2 = "page2.html"
-    page_name_3 = "page3.html"
+    page_name_1 = "/Users/NielsRogge/Documents/python_projecten/transformers/docs/_build/html/quicktour.html"
+    page_name_2 = "/Users/NielsRogge/Documents/python_projecten/transformers/docs/_build/html/performance.html"
+    page_name_3 = "/Users/NielsRogge/Documents/python_projecten/transformers/docs/_build/html/philosophy.html"
 
     with open(page_name_1) as f:
         single_html_string = f.read()
@@ -475,16 +481,16 @@ if __name__ == "__main__":
     with open(page_name_3) as f:
         multi_html_strings.append(f.read())
 
-    model = MarkupLMModel.from_pretrained("microsoft/markuplm-base")
-    tokenizer = MarkupLMTokenizerFast.from_pretrained("microsoft/markuplm-base", add_prefix_space=True)
+    tokenizer = RobertaTokenizerFast.from_pretrained("microsoft/markuplm-base", add_prefix_space=True)
     processor = MarkupLMProcessor(tokenizer)
 
+    # verify not batched input
     inputs = processor(single_html_string)
-    print(inputs)
-    output = model(**inputs)
-    print(output)
+    
+    inputs_bis = huggingface_tokenizer(single_html_string, padding="max_length", max_length=512, truncation=True, stride=128,
+    return_overflowing_tokens=True, return_tensors="pt")
 
-    inputs = processor(multi_html_strings)
-    print(inputs)
-    output = model(**inputs)
-    print(output)
+    for k,v in inputs_bis.items():
+        if k not in ["token_type_ids", "overflow_to_sample_mapping"]:
+            print(f"Checking {k}")
+            assert torch.allclose(inputs[k], v)
