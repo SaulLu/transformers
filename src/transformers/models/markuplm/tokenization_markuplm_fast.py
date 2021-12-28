@@ -430,7 +430,7 @@ class MarkupLMTokenizerFast(PreTrainedTokenizerFast):
             html_string = batch_text_or_text_pair[1] if is_pair else batch_text_or_text_pair
             all_doc_strings, string2xtag_seq, string2xsubs_seq = self.get_three_from_single(html_string)
             if is_pair:
-                three_dict["all_doc_strings"].append((batch_text_or_text_pair[0].split(), all_doc_strings))
+                three_dict["all_doc_strings"].append(([batch_text_or_text_pair[0]], all_doc_strings))
             else:
                 three_dict["all_doc_strings"].append(all_doc_strings)
             three_dict["string2xtag_seq"].append(string2xtag_seq)
