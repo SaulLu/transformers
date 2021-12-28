@@ -48,7 +48,8 @@ import bs4
 from bs4 import BeautifulSoup
 
 
-VOCAB_FILES_NAMES = {"vocab_file": "vocab.json", "merges_file": "merges.txt", "tokenizer_file": "tokenizer.json"}
+VOCAB_FILES_NAMES = {"vocab_file": "vocab.json", "merges_file": "merges.txt", "tokenizer_file": "tokenizer.json",
+"tags_dict": "tags_dict.json"}
 
 PRETRAINED_VOCAB_FILES_MAP = {
     "vocab_file": {
@@ -58,6 +59,10 @@ PRETRAINED_VOCAB_FILES_MAP = {
     "merges_file": {
         "microsoft/markuplm-base": "https://huggingface.co/microsoft/markuplm-base/resolve/main/merges.txt",
         "microsoft/markuplm-large": "https://huggingface.co/microsoft/markuplm-large/resolve/main/merges.txt",
+    },
+    "tags_dict": {
+        "microsoft/markuplm-base": "https://huggingface.co/microsoft/markuplm-base/resolve/main/tags_dict.json",
+        "microsoft/markuplm-large": "https://huggingface.co/microsoft/markuplm-large/resolve/main/merges.json",
     },
 }
 
@@ -144,7 +149,7 @@ class MarkupLMTokenizerFast(PreTrainedTokenizerFast):
         super().__init__(
             vocab_file,
             merges_file,
-            tags_dict=tags_dict,
+            tags_dict,
             tokenizer_file=tokenizer_file,
             errors=errors,
             bos_token=bos_token,
@@ -485,7 +490,7 @@ class MarkupLMTokenizerFast(PreTrainedTokenizerFast):
                 original_index = sanitized_tokens["overflow_to_sample_mapping"][batch_index]
             else:
                 original_index = batch_index
-                
+
             word_ids = sanitized_encodings[batch_index].word_ids
             xpath_tags_in_span = [
                 self.pad_xpath_tags_seq

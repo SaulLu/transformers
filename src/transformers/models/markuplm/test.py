@@ -22,8 +22,15 @@ with open(page_name_3) as f:
     multi_html_strings.append(f.read())
 
 # test not batched
-encoding = tokenizer(single_html_string, max_length=512, stride=128, padding="max_length", truncation=True, return_tensors="pt",
-return_overflowing_tokens=True)
+encoding = tokenizer(
+    single_html_string,
+    max_length=512,
+    stride=128,
+    padding="max_length",
+    truncation=True,
+    return_tensors="pt",
+    return_overflowing_tokens=True,
+)
 
 print(len(encoding))
 for k, v in encoding.items():
