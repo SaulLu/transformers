@@ -37,4 +37,3 @@ for k, v in encoding.items():
 
 print(tokenizer.decode(encoding.input_ids[0].tolist()))
 print(tokenizer.decode(encoding.input_ids[1].tolist()))
-

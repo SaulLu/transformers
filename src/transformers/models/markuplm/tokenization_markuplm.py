@@ -847,8 +847,6 @@ class MarkupLMTokenizer(PreTrainedTokenizer):
         if text_pair is None:
             # text = HTML string
             all_doc_strings, string2xtag_seq, string2xsubs_seq = self.get_three_from_single(text)
-            print("Length of all docstrings:", len(all_doc_strings))
-            print("All doc strings:", all_doc_strings)
             for i, doc_string in enumerate(all_doc_strings):
                 tokens_in_span = self.tokenize(doc_string, **kwargs)
                 tokens += tokens_in_span
@@ -939,16 +937,22 @@ class MarkupLMTokenizer(PreTrainedTokenizer):
         if add_special_tokens:
             sequence = self.build_inputs_with_special_tokens(ids, pair_ids)
             token_type_ids = self.create_token_type_ids_from_sequences(ids, pair_ids)
-            xpath_tags_seq = [self.pad_xpath_tags_seq] + xpath_tags_seq + [self.pad_xpath_tags_seq]
-            xpath_subs_seq = [self.pad_xpath_subs_seq] + xpath_subs_seq + [self.pad_xpath_subs_seq]
+            xpath_tags_ids = (
+                [self.pad_xpath_tags_seq] + xpath_tags_seq + [self.pad_xpath_tags_seq] + pair_xpath_tags_seq
+            )
+            xpath_subs_ids = (
+                [self.pad_xpath_subs_seq] + xpath_subs_seq + [self.pad_xpath_subs_seq] + pair_xpath_subs_seq
+            )
         else:
             sequence = ids + pair_ids if pair else ids
             token_type_ids = [0] * len(ids) + ([0] * len(pair_ids) if pair else [])
+            xpath_tags_ids = xpath_tags_seq + pair_xpath_tags_seq if pair else xpath_tags_seq
+            xpath_subs_ids = xpath_subs_seq + pair_xpath_subs_seq if pair else xpath_subs_seq
 
         # Build output dictionary
         encoded_inputs["input_ids"] = sequence
-        encoded_inputs["xpath_tags_seq"] = xpath_tags_seq
-        encoded_inputs["xpath_subs_seq"] = xpath_subs_seq
+        encoded_inputs["xpath_tags_seq"] = xpath_tags_ids
+        encoded_inputs["xpath_subs_seq"] = xpath_subs_ids
         if return_token_type_ids:
             encoded_inputs["token_type_ids"] = token_type_ids
         if return_special_tokens_mask:

@@ -34,3 +34,22 @@ encoding = tokenizer(multi_html_strings, padding="max_length", max_length=512, t
 
 for k, v in encoding.items():
     print(k, v.shape)
+
+
+# test pair not batched
+question = "what's her name?"
+encoding = tokenizer(
+    question, single_html_string, padding="max_length", max_length=30, truncation=True, return_tensors="pt"
+)
+
+print(tokenizer.decode(encoding.input_ids.squeeze().tolist()))
+
+# test pair batched
+
+questions = ["what's her name?", "can you tell me the address?"]
+encoding = tokenizer(
+    questions, multi_html_strings, padding="max_length", max_length=30, truncation=True, return_tensors="pt"
+)
+
+print(tokenizer.decode(encoding.input_ids[0].tolist()))
+print(tokenizer.decode(encoding.input_ids[1].tolist()))
