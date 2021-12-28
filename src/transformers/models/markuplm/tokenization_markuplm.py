@@ -197,7 +197,7 @@ class MarkupLMTokenizer(PreTrainedTokenizer):
         mask_token (`str`, *optional*, defaults to `"<mask>"`):
             The token used for masking values. This is the token used when training this model with masked language
             modeling. This is the token which the model will try to predict.
-        add_prefix_space (`bool`, *optional*, defaults to `True`):
+        add_prefix_space (`bool`, *optional*, defaults to `False`):
             Whether or not to add an initial space to the input. This allows to treat the leading word just as any
             other word. (RoBERTa tokenizer detect beginning of words by the preceding space).
     """
@@ -851,7 +851,7 @@ class MarkupLMTokenizer(PreTrainedTokenizer):
                 tokens_in_span = self.tokenize(doc_string, **kwargs)
                 tokens += tokens_in_span
                 xpath_tags_seq += [self.xpath_tags_transfer(string2xtag_seq[i])] * len(tokens_in_span)
-                xpath_subs_seq += [self.xpath_tags_transfer(string2xsubs_seq[i])] * len(tokens_in_span)
+                xpath_subs_seq += [self.xpath_subs_transfer(string2xsubs_seq[i])] * len(tokens_in_span)
         else:
             # text = question, text_pair = HTML string
             tokens = self.tokenize(text, **kwargs)

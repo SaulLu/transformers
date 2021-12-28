@@ -23,11 +23,18 @@ import torch
 import bs4
 from bs4 import BeautifulSoup
 
-from transformers import MarkupLMTokenizerFast, RobertaTokenizer, RobertaTokenizerFast
+from transformers import MarkupLMTokenizer, MarkupLMTokenizerFast, RobertaTokenizer, RobertaTokenizerFast
 from transformers.file_utils import is_torch_onnx_dict_inputs_support_available
 
 
 huggingface_tokenizer = MarkupLMTokenizerFast(
+    vocab_file="/Users/NielsRogge/Documents/vocab.json",
+    merges_file="/Users/NielsRogge/Documents/merges.txt",
+    tags_dict="/Users/NielsRogge/Documents/tags_dict.json",
+    add_prefix_space=True,
+)
+
+huggingface_tokenizer_slow = MarkupLMTokenizer(
     vocab_file="/Users/NielsRogge/Documents/vocab.json",
     merges_file="/Users/NielsRogge/Documents/merges.txt",
     tags_dict="/Users/NielsRogge/Documents/tags_dict.json",
@@ -484,13 +491,46 @@ if __name__ == "__main__":
     tokenizer = RobertaTokenizerFast.from_pretrained("microsoft/markuplm-base", add_prefix_space=True)
     processor = MarkupLMProcessor(tokenizer)
 
+    print("Checking equivalence between Microsoft processor and Huggingface tokenizers")
     # verify not batched input
     inputs = processor(single_html_string)
     
     inputs_bis = huggingface_tokenizer(single_html_string, padding="max_length", max_length=512, truncation=True, stride=128,
+    return_overflowing_tokens=True, return_tensors="pt")
+    inputs_bis_slow = huggingface_tokenizer_slow(single_html_string, padding="max_length", max_length=512, truncation=True, stride=128,
     return_overflowing_tokens=True, return_tensors="pt")
 
     for k,v in inputs_bis.items():
         if k not in ["token_type_ids", "overflow_to_sample_mapping"]:
             print(f"Checking {k}")
             assert torch.allclose(inputs[k], v)
+
+    # verify batched input
+    inputs = processor(multi_html_strings)
+
+    inputs_bis = huggingface_tokenizer(multi_html_strings, padding="max_length", max_length=512, truncation=True, stride=128,
+    return_overflowing_tokens=True, return_tensors="pt")
+
+    for k,v in inputs_bis.items():
+        if k not in ["token_type_ids", "overflow_to_sample_mapping"]:
+            print(f"Checking {k}")
+            assert torch.allclose(inputs[k], v)
+
+
+    print("Checking equivalence slow-fast Huggingface tokenizers")
+    # verify non-batched equivalence between slow and fast huggingface tokenizers (without overflowing_tokens)
+    inputs_slow = huggingface_tokenizer_slow(single_html_string, padding="max_length", max_length=512, truncation=True, return_tensors="pt")
+    inputs_fast = huggingface_tokenizer(single_html_string, padding="max_length", max_length=512, truncation=True, return_tensors="pt")
+
+    for k,v in inputs_slow.items():
+        print(f"Checking {k}")
+        assert torch.allclose(inputs_fast[k], v)
+
+    # verify batched equivalence between slow and fast huggingface tokenizers (without overflowing_tokens)
+    inputs_slow = huggingface_tokenizer_slow(multi_html_strings, padding="max_length", max_length=512, truncation=True, return_tensors="pt")
+    inputs_fast = huggingface_tokenizer(multi_html_strings, padding="max_length", max_length=512, truncation=True, return_tensors="pt")
+
+    for k,v in inputs_slow.items():
+        print(f"Checking {k}")
+        assert torch.allclose(inputs_fast[k], v)
+
