@@ -171,7 +171,8 @@ class MarkupLMTokenizerFast(PreTrainedTokenizerFast):
             self.backend_tokenizer.pre_tokenizer = pre_tok_class(**pre_tok_state)
 
         self.add_prefix_space = add_prefix_space
-        self.tags_dict = json.load(open(tags_dict, "r"))
+        with open(tags_dict, encoding="utf-8") as tags_dict_handle:
+            self.tags_dict = json.load(tags_dict_handle)
 
         tokenizer_component = "post_processor"
         tokenizer_component_instance = getattr(self.backend_tokenizer, tokenizer_component, None)

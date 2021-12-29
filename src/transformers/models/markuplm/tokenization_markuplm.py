@@ -258,7 +258,8 @@ class MarkupLMTokenizer(PreTrainedTokenizer):
 
         with open(vocab_file, encoding="utf-8") as vocab_handle:
             self.encoder = json.load(vocab_handle)
-        self.tags_dict = json.load(open(tags_dict, "r"))
+        with open(tags_dict, encoding="utf-8") as tags_dict_handle:
+            self.tags_dict = json.load(tags_dict_handle)
         self.decoder = {v: k for k, v in self.encoder.items()}
         self.errors = errors  # how to handle errors in decoding
         self.byte_encoder = bytes_to_unicode()
