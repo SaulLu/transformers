@@ -591,6 +591,53 @@ class TokenizerTesterMixin:
 
                 shutil.rmtree(tmpdirname)
 
+    def test_save_and_load_3_times_slow_to_fast(self):
+        if not self.test_rust_tokenizer or not self.test_slow_tokenizer:
+            return
+
+        for tokenizer, pretrained_name, kwargs in self.tokenizers_list:
+            with self.subTest(f"{tokenizer.__class__.__name__} ({pretrained_name})"):
+                tmpdirname_1 = tempfile.mkdtemp()
+                tmpdirname_tokenizer_fast_1 = tempfile.mkdtemp()
+                tmpdirname_tokenizer_fast_2 = tempfile.mkdtemp()
+
+                # Save the fast tokenizer files in a temporary directory
+                tokenizer_slow = self.tokenizer_class.from_pretrained(pretrained_name, **kwargs)
+                tokenizer_slow.save_pretrained(tmpdirname_1)  # save only slow version
+
+                tokenizer_fast_1 = self.rust_tokenizer_class.from_pretrained(tmpdirname_1)
+                tokenizer_fast_1.save_pretrained(
+                    tmpdirname_tokenizer_fast_1, legacy_format=False
+                )  # save only fast version
+
+                tokenizer_fast_2 = self.rust_tokenizer_class.from_pretrained(tmpdirname_tokenizer_fast_1)
+                tokenizer_fast_2.save_pretrained(
+                    tmpdirname_tokenizer_fast_2, legacy_format=False
+                )  # save only fast version
+
+                file_names_tmpdirname_tokenizer_fast_1 = os.listdir(tmpdirname_tokenizer_fast_1)
+                file_names_tmpdirname_tokenizer_fast_2 = os.listdir(tmpdirname_tokenizer_fast_2)
+                self.assertListEqual(file_names_tmpdirname_tokenizer_fast_1, file_names_tmpdirname_tokenizer_fast_2)
+
+                for file_name in file_names_tmpdirname_tokenizer_fast_1:
+                    with open(os.path.join(tmpdirname_tokenizer_fast_1, file_name), "r") as fi:
+                        content_file_tokenizer_fast_1 = fi.read()
+
+                    with open(os.path.join(tmpdirname_tokenizer_fast_2, file_name), "r") as fi:
+                        content_file_tokenizer_fast_2 = fi.read()
+
+                    if file_name != "tokenizer_config.json":
+                        self.assertEqual(content_file_tokenizer_fast_1, content_file_tokenizer_fast_2)
+                    else:
+                        import pprint
+
+                        pprint.pprint(json.loads(content_file_tokenizer_fast_1))
+                        pprint.pprint(json.loads(content_file_tokenizer_fast_2))
+
+                shutil.rmtree(tmpdirname_1)
+                shutil.rmtree(tmpdirname_tokenizer_fast_1)
+                shutil.rmtree(tmpdirname_tokenizer_fast_2)
+
     def test_pickle_tokenizer(self):
         """Google pickle __getstate__ __setstate__ if you are struggling with this."""
         tokenizers = self.get_tokenizers()
