@@ -32,7 +32,6 @@ if is_tokenizers_available():
 if is_torch_available():
     _import_structure["modeling_electra"] = [
         "ELECTRA_PRETRAINED_MODEL_ARCHIVE_LIST",
-        "ElectraForCausalLM",
         "ElectraForMaskedLM",
         "ElectraForMultipleChoice",
         "ElectraForPreTraining",
@@ -80,7 +79,6 @@ if TYPE_CHECKING:
     if is_torch_available():
         from .modeling_electra import (
             ELECTRA_PRETRAINED_MODEL_ARCHIVE_LIST,
-            ElectraForCausalLM,
             ElectraForMaskedLM,
             ElectraForMultipleChoice,
             ElectraForPreTraining,

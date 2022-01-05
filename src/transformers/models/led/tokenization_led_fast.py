@@ -41,10 +41,11 @@ class LEDTokenizerFast(BartTokenizerFast):
     r"""
     Construct a "fast" LED tokenizer (backed by HuggingFace's *tokenizers* library).
 
-    [`LEDTokenizerFast`] is identical to [`BartTokenizerFast`] and runs end-to-end tokenization: punctuation splitting
-    and wordpiece.
+    [`LEDTokenizerFast`] is identical to [`BartTokenizerFast`] and runs
+    end-to-end tokenization: punctuation splitting and wordpiece.
 
-    Refer to superclass [`BartTokenizerFast`] for usage examples and documentation concerning parameters.
+    Refer to superclass [`BartTokenizerFast`] for usage examples and documentation concerning
+    parameters.
     """
 
     pretrained_vocab_files_map = PRETRAINED_VOCAB_FILES_MAP

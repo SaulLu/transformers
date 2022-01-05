@@ -591,53 +591,6 @@ class TokenizerTesterMixin:
 
                 shutil.rmtree(tmpdirname)
 
-    def test_save_and_load_3_times_slow_to_fast(self):
-        if not self.test_rust_tokenizer or not self.test_slow_tokenizer:
-            return
-
-        for tokenizer, pretrained_name, kwargs in self.tokenizers_list:
-            with self.subTest(f"{tokenizer.__class__.__name__} ({pretrained_name})"):
-                tmpdirname_1 = tempfile.mkdtemp()
-                tmpdirname_tokenizer_fast_1 = tempfile.mkdtemp()
-                tmpdirname_tokenizer_fast_2 = tempfile.mkdtemp()
-
-                # Save the fast tokenizer files in a temporary directory
-                tokenizer_slow = self.tokenizer_class.from_pretrained(pretrained_name, **kwargs)
-                tokenizer_slow.save_pretrained(tmpdirname_1)  # save only slow version
-
-                tokenizer_fast_1 = self.rust_tokenizer_class.from_pretrained(tmpdirname_1)
-                tokenizer_fast_1.save_pretrained(
-                    tmpdirname_tokenizer_fast_1, legacy_format=False
-                )  # save only fast version
-
-                tokenizer_fast_2 = self.rust_tokenizer_class.from_pretrained(tmpdirname_tokenizer_fast_1)
-                tokenizer_fast_2.save_pretrained(
-                    tmpdirname_tokenizer_fast_2, legacy_format=False
-                )  # save only fast version
-
-                file_names_tmpdirname_tokenizer_fast_1 = os.listdir(tmpdirname_tokenizer_fast_1)
-                file_names_tmpdirname_tokenizer_fast_2 = os.listdir(tmpdirname_tokenizer_fast_2)
-                self.assertListEqual(file_names_tmpdirname_tokenizer_fast_1, file_names_tmpdirname_tokenizer_fast_2)
-
-                for file_name in file_names_tmpdirname_tokenizer_fast_1:
-                    with open(os.path.join(tmpdirname_tokenizer_fast_1, file_name), "r") as fi:
-                        content_file_tokenizer_fast_1 = fi.read()
-
-                    with open(os.path.join(tmpdirname_tokenizer_fast_2, file_name), "r") as fi:
-                        content_file_tokenizer_fast_2 = fi.read()
-
-                    if file_name != "tokenizer_config.json":
-                        self.assertEqual(content_file_tokenizer_fast_1, content_file_tokenizer_fast_2)
-                    else:
-                        import pprint
-
-                        pprint.pprint(json.loads(content_file_tokenizer_fast_1))
-                        pprint.pprint(json.loads(content_file_tokenizer_fast_2))
-
-                shutil.rmtree(tmpdirname_1)
-                shutil.rmtree(tmpdirname_tokenizer_fast_1)
-                shutil.rmtree(tmpdirname_tokenizer_fast_2)
-
     def test_pickle_tokenizer(self):
         """Google pickle __getstate__ __setstate__ if you are struggling with this."""
         tokenizers = self.get_tokenizers()
@@ -1444,64 +1397,6 @@ class TokenizerTesterMixin:
                 padded_sequence_left_length = len(padded_sequence_left)
                 assert sequence_length == padded_sequence_left_length
                 assert encoded_sequence == padded_sequence_left
-
-    def test_right_and_left_truncation(self):
-        tokenizers = self.get_tokenizers(do_lower_case=False)
-        for tokenizer in tokenizers:
-            with self.subTest(f"{tokenizer.__class__.__name__}"):
-                sequence = "This is a test sequence"
-
-                # RIGHT PADDING - Check that it correctly pads when a maximum length is specified along with the padding flag set to True
-                truncation_size = 3
-                tokenizer.truncation_side = "right"
-                encoded_sequence = tokenizer.encode(sequence, add_special_tokens=False)
-                sequence_length = len(encoded_sequence)
-                # Remove EOS/BOS tokens
-                truncated_sequence = tokenizer.encode(
-                    sequence, max_length=sequence_length - truncation_size, truncation=True, add_special_tokens=False
-                )
-                truncated_sequence_length = len(truncated_sequence)
-                self.assertEqual(sequence_length, truncated_sequence_length + truncation_size)
-                self.assertEqual(encoded_sequence[:-truncation_size], truncated_sequence)
-
-                # LEFT PADDING - Check that it correctly pads when a maximum length is specified along with the truncation flag set to True
-                tokenizer.truncation_side = "left"
-                sequence_length = len(encoded_sequence)
-                truncated_sequence = tokenizer.encode(
-                    sequence, max_length=sequence_length - truncation_size, truncation=True, add_special_tokens=False
-                )
-                truncated_sequence_length = len(truncated_sequence)
-                self.assertEqual(sequence_length, truncated_sequence_length + truncation_size)
-                self.assertEqual(encoded_sequence[truncation_size:], truncated_sequence)
-
-                # RIGHT & LEFT PADDING - Check that nothing is done for 'longest' and 'no_truncation'
-                sequence_length = len(encoded_sequence)
-
-                tokenizer.truncation_side = "right"
-                truncated_sequence_right = tokenizer.encode(sequence, truncation=True, add_special_tokens=False)
-                truncated_sequence_right_length = len(truncated_sequence_right)
-                self.assertEqual(sequence_length, truncated_sequence_right_length)
-                self.assertEqual(encoded_sequence, truncated_sequence_right)
-
-                tokenizer.truncation_side = "left"
-                truncated_sequence_left = tokenizer.encode(
-                    sequence, truncation="longest_first", add_special_tokens=False
-                )
-                truncated_sequence_left_length = len(truncated_sequence_left)
-                self.assertEqual(sequence_length, truncated_sequence_left_length)
-                self.assertEqual(encoded_sequence, truncated_sequence_left)
-
-                tokenizer.truncation_side = "right"
-                truncated_sequence_right = tokenizer.encode(sequence, add_special_tokens=False)
-                truncated_sequence_right_length = len(truncated_sequence_right)
-                self.assertEqual(sequence_length, truncated_sequence_right_length)
-                self.assertEqual(encoded_sequence, truncated_sequence_right)
-
-                tokenizer.truncation_side = "left"
-                truncated_sequence_left = tokenizer.encode(sequence, truncation=False, add_special_tokens=False)
-                truncated_sequence_left_length = len(truncated_sequence_left)
-                self.assertEqual(sequence_length, truncated_sequence_left_length)
-                self.assertEqual(encoded_sequence, truncated_sequence_left)
 
     def test_padding_to_max_length(self):
         """We keep this test for backward compatibility but it should be remove when `pad_to_max_length` is deprecated."""
@@ -3791,13 +3686,6 @@ class TrieTest(unittest.TestCase):
         trie.add("B")
         trie.add("C")
         self.assertEqual(trie.split("ABC"), ["AB", "C"])
-
-    def test_trie_skip(self):
-        trie = Trie()
-        trie.add("ABC")
-        trie.add("B")
-        trie.add("CD")
-        self.assertEqual(trie.split("ABCD"), ["ABC", "D"])
 
     def test_cut_text_hardening(self):
         # Even if the offsets are wrong, we necessarily output correct string

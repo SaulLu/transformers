@@ -20,7 +20,12 @@ import argparse
 import fairseq
 import torch
 
-from transformers import UniSpeechSatConfig, UniSpeechSatForCTC, UniSpeechSatForPreTraining, logging
+from transformers import (  # UniSpeechSatCTCTokenizer,; UniSpeechSatFeatureExtractor,; UniSpeechSatProcessor,
+    UniSpeechSatConfig,
+    UniSpeechSatForCTC,
+    UniSpeechSatForPreTraining,
+    logging,
+)
 
 
 logging.set_verbosity_info()

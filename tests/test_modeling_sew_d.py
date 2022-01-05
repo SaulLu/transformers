@@ -224,7 +224,7 @@ class SEWDModelTester:
         model.train()
 
         # freeze feature encoder
-        model.freeze_feature_encoder()
+        model.freeze_feature_extractor()
 
         input_values = input_values[:3]
 

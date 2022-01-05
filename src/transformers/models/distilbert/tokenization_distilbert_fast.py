@@ -66,10 +66,11 @@ class DistilBertTokenizerFast(BertTokenizerFast):
     r"""
     Construct a "fast" DistilBERT tokenizer (backed by HuggingFace's *tokenizers* library).
 
-    [`DistilBertTokenizerFast`] is identical to [`BertTokenizerFast`] and runs end-to-end tokenization: punctuation
-    splitting and wordpiece.
+    [`DistilBertTokenizerFast`] is identical to [`BertTokenizerFast`] and runs
+    end-to-end tokenization: punctuation splitting and wordpiece.
 
-    Refer to superclass [`BertTokenizerFast`] for usage examples and documentation concerning parameters.
+    Refer to superclass [`BertTokenizerFast`] for usage examples and documentation concerning
+    parameters.
     """
 
     vocab_files_names = VOCAB_FILES_NAMES

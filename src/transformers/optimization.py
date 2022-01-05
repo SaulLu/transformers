@@ -271,8 +271,7 @@ def get_scheduler(
 
 class AdamW(Optimizer):
     """
-    Implements Adam algorithm with weight decay fix as introduced in [Decoupled Weight Decay
-    Regularization](https://arxiv.org/abs/1711.05101).
+    Implements Adam algorithm with weight decay fix as introduced in [Decoupled Weight Decay Regularization](https://arxiv.org/abs/1711.05101).
 
     Parameters:
         params (`Iterable[nn.parameter.Parameter]`):
@@ -285,7 +284,7 @@ class AdamW(Optimizer):
             Adam's epsilon for numerical stability.
         weight_decay (`float`, *optional*, defaults to 0):
             Decoupled weight decay to apply.
-        correct_bias (`bool`, *optional*, defaults to `True`):
+        correct_bias (`bool`, *optional*, defaults to *True*):
             Whether or not to correct bias in Adam (for instance, in Bert TF repository they use `False`).
     """
 
@@ -428,12 +427,10 @@ class Adafactor(Optimizer):
     Adafactor(model.parameters(), scale_parameter=True, relative_step=True, warmup_init=True, lr=None)
     ```
 
-    When using `lr=None` with [`Trainer`] you will most likely need to use [`~optimization.AdafactorSchedule`]
-    scheduler as following:
+    When using `lr=None` with [`Trainer`] you will most likely need to use [`~optimization.AdafactorSchedule`] scheduler as following:
 
     ```python
     from transformers.optimization import Adafactor, AdafactorSchedule
-
     optimizer = Adafactor(model.parameters(), scale_parameter=True, relative_step=True, warmup_init=True, lr=None)
     lr_scheduler = AdafactorSchedule(optimizer)
     trainer = Trainer(..., optimizers=(optimizer, lr_scheduler))
@@ -453,7 +450,7 @@ class Adafactor(Optimizer):
         weight_decay=0.0,
         relative_step=False,
         scale_parameter=False,
-        warmup_init=False,
+        warmup_init=False
     )
     ```"""
 
@@ -614,8 +611,9 @@ class Adafactor(Optimizer):
 
 class AdafactorSchedule(LambdaLR):
     """
-    Since [`~optimization.Adafactor`] performs its own scheduling, if the training loop relies on a scheduler (e.g.,
-    for logging), this class creates a proxy object that retrieves the current lr values from the optimizer.
+    Since [`~optimization.Adafactor`] performs its own scheduling, if the training loop relies on a
+    scheduler (e.g., for logging), this class creates a proxy object that retrieves the current lr values from the
+    optimizer.
 
     It returns `initial_lr` during startup and the actual `lr` during stepping.
     """
