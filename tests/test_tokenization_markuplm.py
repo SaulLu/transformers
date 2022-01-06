@@ -18,6 +18,7 @@ import itertools
 import json
 import os
 import unittest
+from typing import List
 
 from transformers import AddedToken, MarkupLMTokenizer, MarkupLMTokenizerFast
 from transformers.models.markuplm.tokenization_markuplm import VOCAB_FILES_NAMES
@@ -74,6 +75,11 @@ class MarkupLMTokenizationTest(TokenizerTesterMixin, unittest.TestCase):
         with open(self.tags_dict, "w", encoding="utf-8") as fp:
             fp.write(json.dumps(tags_dict) + "\n")
 
+    def get_clean_sequence(self, tokenizer):
+        html_string = "<html> hello world </html>"
+        ids = tokenizer.encode(html_string, add_special_tokens=False)
+        return html_string, ids
+    
     def get_tokenizer(self, **kwargs):
         kwargs.update(self.special_tokens_map)
         return self.tokenizer_class.from_pretrained(self.tmpdirname, **kwargs)
@@ -107,34 +113,19 @@ class MarkupLMTokenizationTest(TokenizerTesterMixin, unittest.TestCase):
             [0, 31414, 232, 328, 740, 1140, 12695, 69, 46078, 1588, 2],
         )
 
-    def test_add_tokens(self):
-        for tokenizer, pretrained_name, kwargs in self.tokenizers_list:
-            print("Pretrained_name:", pretrained_name)
-            print("Kwargs:", kwargs)
-            with self.subTest(f"{tokenizer.__class__.__name__} ({pretrained_name})"):
-                tokenizer_r = self.rust_tokenizer_class.from_pretrained(pretrained_name, **kwargs)
+    def test_add_special_tokens(self):
+        tokenizers: List[MarkupLMTokenizer] = self.get_tokenizers(do_lower_case=False)
+        for tokenizer in tokenizers:
+            with self.subTest(f"{tokenizer.__class__.__name__}"):
+                
+                special_token = "[SPECIAL_TOKEN]"
 
-                vocab_size = len(tokenizer_r)
-                self.assertEqual(tokenizer_r.add_tokens(""), 0)
-                self.assertEqual(tokenizer_r.add_tokens("testoken"), 1)
-                self.assertEqual(tokenizer_r.add_tokens(["testoken1", "testtoken2"]), 2)
-                self.assertEqual(len(tokenizer_r), vocab_size + 3)
-
-                self.assertEqual(tokenizer_r.add_special_tokens({}), 0)
-                self.assertEqual(tokenizer_r.add_special_tokens({"bos_token": "[BOS]", "eos_token": "[EOS]"}), 2)
-                self.assertRaises(
-                    AssertionError, tokenizer_r.add_special_tokens, {"additional_special_tokens": "<testtoken1>"}
+                tokenizer.add_special_tokens({"cls_token": special_token})
+                encoded_special_token = tokenizer.encode(
+                    "<html> " + special_token + "</html>", add_special_tokens=False
                 )
-                self.assertEqual(tokenizer_r.add_special_tokens({"additional_special_tokens": ["<testtoken2>"]}), 1)
-                self.assertEqual(
-                    tokenizer_r.add_special_tokens({"additional_special_tokens": ["<testtoken3>", "<testtoken4>"]}), 2
-                )
-                self.assertIn("<testtoken3>", tokenizer_r.special_tokens_map["additional_special_tokens"])
-                self.assertIsInstance(tokenizer_r.special_tokens_map["additional_special_tokens"], list)
-                self.assertGreaterEqual(len(tokenizer_r.special_tokens_map["additional_special_tokens"]), 2)
-
-                self.assertEqual(len(tokenizer_r), vocab_size + 8)
-
+                self.assertEqual(len(encoded_special_token), 1)
+    
     @slow
     def test_sequence_builders(self):
         tokenizer = self.tokenizer_class.from_pretrained("microsoft/markuplm-base")
