@@ -18,6 +18,7 @@ and _encode_plus, in which the Rust tokenizer is used.
 """
 
 import html
+import os
 import json
 from typing import Dict, List, Optional, Tuple, Union
 
@@ -714,4 +715,9 @@ class MarkupLMTokenizerFast(PreTrainedTokenizerFast):
 
     def save_vocabulary(self, save_directory: str, filename_prefix: Optional[str] = None) -> Tuple[str]:
         files = self._tokenizer.model.save(save_directory, name=filename_prefix)
-        return tuple(files)
+        
+        tags_dict_file = os.path.join(
+            save_directory, (filename_prefix + "-" if filename_prefix else "") + VOCAB_FILES_NAMES["tags_dict"]
+        )
+        
+        return tuple(files) + (tags_dict_file,)
