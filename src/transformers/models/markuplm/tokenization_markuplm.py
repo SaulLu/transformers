@@ -62,7 +62,7 @@ PRETRAINED_VOCAB_FILES_MAP = {
     },
     "tags_dict": {
         "microsoft/markuplm-base": "https://huggingface.co/microsoft/markuplm-base/resolve/main/tags_dict.json",
-        "microsoft/markuplm-large": "https://huggingface.co/microsoft/markuplm-large/resolve/main/merges.json",
+        "microsoft/markuplm-large": "https://huggingface.co/microsoft/markuplm-large/resolve/main/tags_dict.json",
     },
 }
 

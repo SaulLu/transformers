@@ -23,7 +23,6 @@ import torch
 import bs4
 from bs4 import BeautifulSoup
 from transformers import MarkupLMTokenizer, MarkupLMTokenizerFast, RobertaTokenizer, RobertaTokenizerFast
-from transformers.file_utils import is_torch_onnx_dict_inputs_support_available
 
 
 huggingface_tokenizer = MarkupLMTokenizerFast(
