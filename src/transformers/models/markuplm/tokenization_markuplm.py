@@ -429,9 +429,11 @@ class MarkupLMTokenizer(PreTrainedTokenizer):
             save_directory, (filename_prefix + "-" if filename_prefix else "") + VOCAB_FILES_NAMES["tags_dict"]
         )
 
+        # save vocab_file
         with open(vocab_file, "w", encoding="utf-8") as f:
             f.write(json.dumps(self.encoder, ensure_ascii=False))
 
+        # save merge_file
         index = 0
         with open(merge_file, "w", encoding="utf-8") as writer:
             writer.write("#version: 0.2\n")
@@ -445,6 +447,7 @@ class MarkupLMTokenizer(PreTrainedTokenizer):
                 writer.write(" ".join(bpe_tokens) + "\n")
                 index += 1
 
+        # save tags_dict_file
         with open(tags_dict_file, "w", encoding="utf-8") as f:
             f.write(json.dumps(self.tags_dict, ensure_ascii=False))
 
