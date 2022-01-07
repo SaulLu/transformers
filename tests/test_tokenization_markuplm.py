@@ -14,13 +14,21 @@
 # limitations under the License.
 
 
+import inspect
 import itertools
 import json
 import os
 import unittest
 from typing import List
 
-from transformers import AddedToken, MarkupLMTokenizer, MarkupLMTokenizerFast, is_tf_available, is_torch_available
+from transformers import (
+    AddedToken,
+    MarkupLMTokenizer,
+    MarkupLMTokenizerFast,
+    SpecialTokensMixin,
+    is_tf_available,
+    is_torch_available,
+)
 from transformers.models.markuplm.tokenization_markuplm import VOCAB_FILES_NAMES
 from transformers.testing_utils import require_tokenizers, slow
 
@@ -33,6 +41,7 @@ class MarkupLMTokenizationTest(TokenizerTesterMixin, unittest.TestCase):
     rust_tokenizer_class = MarkupLMTokenizerFast
     test_rust_tokenizer = True
     from_pretrained_kwargs = {"cls_token": "<s>"}
+    test_seq2seq = False
 
     def setUp(self):
         super().setUp()
@@ -75,17 +84,36 @@ class MarkupLMTokenizationTest(TokenizerTesterMixin, unittest.TestCase):
         with open(self.tags_dict, "w", encoding="utf-8") as fp:
             fp.write(json.dumps(tags_dict) + "\n")
 
-    def get_clean_sequence(self, tokenizer):
-        html_string = "<html> hello world </html>"
-        ids = tokenizer.encode(html_string, add_special_tokens=False)
-        return html_string, ids
+    # def get_clean_sequence(self, tokenizer):
+    #     html_string = "<html> hello world </html>"
+    #     ids = tokenizer.encode(html_string, add_special_tokens=False)
+    #     return html_string, ids
 
-    def get_html_string(self):
+    def get_single_html_string(self):
         path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "fixtures/sample_html.html")
         with open(path) as f:
             single_html_string = f.read()
 
         return single_html_string
+
+    def get_multiple_html_strings(self):
+        html_string = self.get_single_html_string()
+
+        another_html_string = "<html> hello world </html>"
+
+        return [html_string, another_html_string]
+
+    def get_single_html_string_pair(self):
+        question = "how are you?"
+        html_string = self.get_single_html_string()
+
+        return question, html_string
+
+    def get_multiple_html_strings_pair(self):
+        questions = ["how are you?", "what's your name?"]
+        html_strings = self.get_multiple_html_strings()
+
+        return questions, html_strings
 
     def get_tokenizer(self, **kwargs):
         kwargs.update(self.special_tokens_map)
@@ -135,6 +163,69 @@ class MarkupLMTokenizationTest(TokenizerTesterMixin, unittest.TestCase):
                     sequences, mask = information["input_ids"], information["token_type_ids"]
                     self.assertEqual(len(sequences), len(mask))
 
+    def test_batch_encode_dynamic_overflowing(self):
+        """
+        When calling batch_encode with multiple sequence it can returns different number of
+        overflowing encoding for each sequence:
+        [
+          Sequence 1: [Encoding 1, Encoding 2],
+          Sequence 2: [Encoding 1],
+          Sequence 3: [Encoding 1, Encoding 2, ... Encoding N]
+        ]
+        This needs to be padded so that it can represented as a tensor
+        """
+        for tokenizer, pretrained_name, kwargs in self.tokenizers_list:
+            tokenizer = self.rust_tokenizer_class.from_pretrained(pretrained_name, **kwargs)
+
+            with self.subTest(f"{tokenizer.__class__.__name__} ({pretrained_name}, {tokenizer.__class__.__name__})"):
+
+                if is_torch_available():
+                    returned_tensor = "pt"
+                elif is_tf_available():
+                    returned_tensor = "tf"
+                else:
+                    returned_tensor = "jax"
+
+                if not tokenizer.pad_token or tokenizer.pad_token_id < 0:
+                    return
+
+                # Single example
+                tokens = tokenizer.encode_plus(
+                    "<html> HuggingFace is solving NLP one commit at a time </html>",
+                    max_length=6,
+                    padding=True,
+                    truncation=True,
+                    return_tensors=returned_tensor,
+                    return_overflowing_tokens=True,
+                )
+
+                for key in filter(lambda x: "overflow_to_sample_mapping" not in x, tokens.keys()):
+                    if key not in ["xpath_tags_seq", "xpath_subs_seq"]:
+                        self.assertEqual(len(tokens[key].shape), 2)
+                    else:
+                        self.assertEqual(len(tokens[key].shape), 3)
+
+                # Batch of examples
+                tokens = tokenizer.batch_encode_plus(
+                    [
+                        "<html> HuggingFace is solving NLP one commit at a time </html>",
+                        "<html> Very tiny input </html>",
+                    ],
+                    max_length=6,
+                    padding=True,
+                    truncation="only_first",
+                    return_tensors=returned_tensor,
+                    return_overflowing_tokens=True,
+                )
+
+                for key in filter(lambda x: "overflow_to_sample_mapping" not in x, tokens.keys()):
+                    if key not in ["xpath_tags_seq", "xpath_subs_seq"]:
+                        self.assertEqual(len(tokens[key].shape), 2)
+                        self.assertEqual(tokens[key].shape[-1], 6)
+                    else:
+                        self.assertEqual(len(tokens[key].shape), 3)
+                        self.assertEqual(tokens[key].shape[-1], 50)
+
     def test_add_special_tokens(self):
         tokenizers: List[MarkupLMTokenizer] = self.get_tokenizers(do_lower_case=False)
         for tokenizer in tokenizers:
@@ -147,6 +238,37 @@ class MarkupLMTokenizationTest(TokenizerTesterMixin, unittest.TestCase):
                     "<html> " + special_token + "</html>", add_special_tokens=False
                 )
                 self.assertEqual(len(encoded_special_token), 1)
+
+    def test_call(self):
+        # Tests that all call wrap to encode_plus and batch_encode_plus
+        tokenizers = self.get_tokenizers(do_lower_case=False)
+        for tokenizer in tokenizers:
+            with self.subTest(f"{tokenizer.__class__.__name__}"):
+                sequences = [
+                    "<html> Testing batch encode plus </html>",
+                    "<html> Testing batch encode plus with different sequence lengths </html>",
+                    "<html> Testing batch encode plus with different sequence lengths correctly pads </html",
+                ]
+
+                # Test not batched
+                encoded_sequences_1 = tokenizer.encode_plus(sequences[0])
+                encoded_sequences_2 = tokenizer(sequences[0])
+                self.assertEqual(encoded_sequences_1, encoded_sequences_2)
+
+                # Test not batched pairs
+                encoded_sequences_1 = tokenizer.encode_plus(sequences[0], sequences[1])
+                encoded_sequences_2 = tokenizer(sequences[0], sequences[1])
+                self.assertEqual(encoded_sequences_1, encoded_sequences_2)
+
+                # Test batched
+                encoded_sequences_1 = tokenizer.batch_encode_plus(sequences)
+                encoded_sequences_2 = tokenizer(sequences)
+                self.assertEqual(encoded_sequences_1, encoded_sequences_2)
+
+                # Test batched pairs
+                encoded_sequences_1 = tokenizer.batch_encode_plus(list(zip(sequences, sequences)), is_pair=True)
+                encoded_sequences_2 = tokenizer(sequences, sequences)
+                self.assertEqual(encoded_sequences_1, encoded_sequences_2)
 
     def test_embeded_special_tokens(self):
         if not self.test_slow_tokenizer:
@@ -318,7 +440,7 @@ class MarkupLMTokenizationTest(TokenizerTesterMixin, unittest.TestCase):
                 tokenizer_r = self.rust_tokenizer_class.from_pretrained(pretrained_name, **kwargs)
                 tokenizer_p = self.tokenizer_class.from_pretrained(pretrained_name, **kwargs)
 
-                html_string = self.get_html_string()
+                html_string = self.get_single_html_string()
 
                 # Ensure basic input match
                 input_p = tokenizer_p.encode_plus(html_string)
@@ -432,14 +554,16 @@ class MarkupLMTokenizationTest(TokenizerTesterMixin, unittest.TestCase):
     def test_pretokenized_inputs(self):
         pass
 
+    @unittest.skip("TO DO: overwrite this very extensive test.")
+    def test_alignement_methods(self):
+        pass
+
     # TODO: this test can be combined with `test_sentencepiece_tokenize_and_convert_tokens_to_string` after the latter is extended to all tokenizers.
     def test_tokenize_special_tokens(self):
         """Test `tokenize` with special tokens."""
         tokenizers = self.get_tokenizers(fast=True, do_lower_case=True)
         for tokenizer in tokenizers:
             with self.subTest(f"{tokenizer.__class__.__name__}"):
-                print("Tokenizer:", tokenizer)
-
                 SPECIAL_TOKEN_1 = "[SPECIAL_TOKEN_1]"
                 SPECIAL_TOKEN_2 = "[SPECIAL_TOKEN_2]"
 
@@ -475,95 +599,196 @@ class MarkupLMTokenizationTest(TokenizerTesterMixin, unittest.TestCase):
             self.assertEqual(post_processor_state["add_prefix_space"], add_prefix_space)
             self.assertEqual(post_processor_state["trim_offsets"], trim_offsets)
 
-    def test_offsets_mapping_with_different_add_prefix_space_and_trim_space_arguments(self):
-        # Test which aims to verify that the offsets are well adapted to the argument `add_prefix_space` and
-        # `trim_offsets`
+    def test_padding(self, max_length=50):
+        if not self.test_slow_tokenizer:
+            # as we don't have a slow version, we can't compare the outputs between slow and fast versions
+            return
+
         for tokenizer, pretrained_name, kwargs in self.tokenizers_list:
             with self.subTest(f"{tokenizer.__class__.__name__} ({pretrained_name})"):
-                text_of_1_token = "hello"  # `hello` is a token in the vocabulary of `pretrained_name`
-                text = f"{text_of_1_token} {text_of_1_token}"
+                tokenizer_r = self.rust_tokenizer_class.from_pretrained(pretrained_name, **kwargs)
+                tokenizer_p = self.tokenizer_class.from_pretrained(pretrained_name, **kwargs)
 
-                tokenizer_r = self.rust_tokenizer_class.from_pretrained(
-                    pretrained_name, use_fast=True, add_prefix_space=True, trim_offsets=True
-                )
-                encoding = tokenizer_r(text, return_offsets_mapping=True, add_special_tokens=False)
-                self.assertEqual(encoding.offset_mapping[0], (0, len(text_of_1_token)))
-                self.assertEqual(
-                    encoding.offset_mapping[1],
-                    (len(text_of_1_token) + 1, len(text_of_1_token) + 1 + len(text_of_1_token)),
-                )
+                self.assertEqual(tokenizer_p.pad_token_id, tokenizer_r.pad_token_id)
+                pad_token_id = tokenizer_p.pad_token_id
 
-                tokenizer_r = self.rust_tokenizer_class.from_pretrained(
-                    pretrained_name, use_fast=True, add_prefix_space=False, trim_offsets=True
-                )
-                encoding = tokenizer_r(text, return_offsets_mapping=True, add_special_tokens=False)
-                self.assertEqual(encoding.offset_mapping[0], (0, len(text_of_1_token)))
-                self.assertEqual(
-                    encoding.offset_mapping[1],
-                    (len(text_of_1_token) + 1, len(text_of_1_token) + 1 + len(text_of_1_token)),
-                )
+                # Encode - Simple input
+                html_string = self.get_single_html_string()
 
-                tokenizer_r = self.rust_tokenizer_class.from_pretrained(
-                    pretrained_name, use_fast=True, add_prefix_space=True, trim_offsets=False
-                )
-                encoding = tokenizer_r(text, return_offsets_mapping=True, add_special_tokens=False)
-                self.assertEqual(encoding.offset_mapping[0], (0, len(text_of_1_token)))
-                self.assertEqual(
-                    encoding.offset_mapping[1],
-                    (len(text_of_1_token), len(text_of_1_token) + 1 + len(text_of_1_token)),
-                )
+                input_r = tokenizer_r.encode(html_string, max_length=max_length, pad_to_max_length=True)
+                input_p = tokenizer_p.encode(html_string, max_length=max_length, pad_to_max_length=True)
+                self.assert_padded_input_match(input_r, input_p, max_length, pad_token_id)
+                input_r = tokenizer_r.encode(html_string, max_length=max_length, padding="max_length")
+                input_p = tokenizer_p.encode(html_string, max_length=max_length, padding="max_length")
+                self.assert_padded_input_match(input_r, input_p, max_length, pad_token_id)
 
-                tokenizer_r = self.rust_tokenizer_class.from_pretrained(
-                    pretrained_name, use_fast=True, add_prefix_space=False, trim_offsets=False
-                )
-                encoding = tokenizer_r(text, return_offsets_mapping=True, add_special_tokens=False)
-                self.assertEqual(encoding.offset_mapping[0], (0, len(text_of_1_token)))
-                self.assertEqual(
-                    encoding.offset_mapping[1],
-                    (len(text_of_1_token), len(text_of_1_token) + 1 + len(text_of_1_token)),
-                )
+                input_r = tokenizer_r.encode(html_string, padding="longest")
+                input_p = tokenizer_p.encode(html_string, padding=True)
+                self.assert_padded_input_match(input_r, input_p, len(input_r), pad_token_id)
 
-                text = f" {text}"
+                # Encode - Pair input
+                question, html_string = self.get_single_html_string_pair()
 
-                # tokenizer_r = self.rust_tokenizer_class.from_pretrained(
-                #     pretrained_name, use_fast=True, add_prefix_space=True, trim_offsets=True
-                # )
-                # encoding = tokenizer_r(text, return_offsets_mapping=True, add_special_tokens=False)
-                # self.assertEqual(encoding.offset_mapping[0], (1, 1 + len(text_of_1_token)))
-                # self.assertEqual(
-                #     encoding.offset_mapping[1],
-                #     (1 + len(text_of_1_token) + 1, 1 + len(text_of_1_token) + 1 + len(text_of_1_token)),
-                # )
+                input_r = tokenizer_r.encode(question, html_string, max_length=max_length, pad_to_max_length=True)
+                input_p = tokenizer_p.encode(question, html_string, max_length=max_length, pad_to_max_length=True)
+                self.assert_padded_input_match(input_r, input_p, max_length, pad_token_id)
+                input_r = tokenizer_r.encode(question, html_string, max_length=max_length, padding="max_length")
+                input_p = tokenizer_p.encode(question, html_string, max_length=max_length, padding="max_length")
+                self.assert_padded_input_match(input_r, input_p, max_length, pad_token_id)
+                input_r = tokenizer_r.encode(question, html_string, padding=True)
+                input_p = tokenizer_p.encode(question, html_string, padding="longest")
+                self.assert_padded_input_match(input_r, input_p, len(input_r), pad_token_id)
 
-                tokenizer_r = self.rust_tokenizer_class.from_pretrained(
-                    pretrained_name, use_fast=True, add_prefix_space=False, trim_offsets=True
-                )
-                encoding = tokenizer_r(text, return_offsets_mapping=True, add_special_tokens=False)
-                self.assertEqual(encoding.offset_mapping[0], (1, 1 + len(text_of_1_token)))
-                self.assertEqual(
-                    encoding.offset_mapping[1],
-                    (1 + len(text_of_1_token) + 1, 1 + len(text_of_1_token) + 1 + len(text_of_1_token)),
+                # Encode_plus - Simple input
+                input_r = tokenizer_r.encode_plus(html_string, max_length=max_length, pad_to_max_length=True)
+                input_p = tokenizer_p.encode_plus(html_string, max_length=max_length, pad_to_max_length=True)
+                self.assert_padded_input_match(input_r["input_ids"], input_p["input_ids"], max_length, pad_token_id)
+                self.assertSequenceEqual(input_r["attention_mask"], input_p["attention_mask"])
+                input_r = tokenizer_r.encode_plus(html_string, max_length=max_length, padding="max_length")
+                input_p = tokenizer_p.encode_plus(html_string, max_length=max_length, padding="max_length")
+                self.assert_padded_input_match(input_r["input_ids"], input_p["input_ids"], max_length, pad_token_id)
+                self.assertSequenceEqual(input_r["attention_mask"], input_p["attention_mask"])
+
+                input_r = tokenizer_r.encode_plus(html_string, padding="longest")
+                input_p = tokenizer_p.encode_plus(html_string, padding=True)
+                self.assert_padded_input_match(
+                    input_r["input_ids"], input_p["input_ids"], len(input_r["input_ids"]), pad_token_id
                 )
 
-                tokenizer_r = self.rust_tokenizer_class.from_pretrained(
-                    pretrained_name, use_fast=True, add_prefix_space=True, trim_offsets=False
+                self.assertSequenceEqual(input_r["attention_mask"], input_p["attention_mask"])
+
+                # Encode_plus - Pair input
+                input_r = tokenizer_r.encode_plus(question, html_string, max_length=max_length, pad_to_max_length=True)
+                input_p = tokenizer_p.encode_plus(question, html_string, max_length=max_length, pad_to_max_length=True)
+                self.assert_padded_input_match(input_r["input_ids"], input_p["input_ids"], max_length, pad_token_id)
+                self.assertSequenceEqual(input_r["attention_mask"], input_p["attention_mask"])
+                input_r = tokenizer_r.encode_plus(question, html_string, max_length=max_length, padding="max_length")
+                input_p = tokenizer_p.encode_plus(question, html_string, max_length=max_length, padding="max_length")
+                self.assert_padded_input_match(input_r["input_ids"], input_p["input_ids"], max_length, pad_token_id)
+                self.assertSequenceEqual(input_r["attention_mask"], input_p["attention_mask"])
+                input_r = tokenizer_r.encode_plus(question, html_string, padding="longest")
+                input_p = tokenizer_p.encode_plus(question, html_string, padding=True)
+                self.assert_padded_input_match(
+                    input_r["input_ids"], input_p["input_ids"], len(input_r["input_ids"]), pad_token_id
                 )
-                encoding = tokenizer_r(text, return_offsets_mapping=True, add_special_tokens=False)
-                self.assertEqual(encoding.offset_mapping[0], (0, 1 + len(text_of_1_token)))
-                self.assertEqual(
-                    encoding.offset_mapping[1],
-                    (1 + len(text_of_1_token), 1 + len(text_of_1_token) + 1 + len(text_of_1_token)),
+                self.assertSequenceEqual(input_r["attention_mask"], input_p["attention_mask"])
+
+                # Batch_encode_plus - Simple input
+                html_strings = self.get_multiple_html_strings()
+
+                input_r = tokenizer_r.batch_encode_plus(
+                    html_strings,
+                    max_length=max_length,
+                    pad_to_max_length=True,
+                )
+                input_p = tokenizer_p.batch_encode_plus(
+                    html_strings,
+                    max_length=max_length,
+                    pad_to_max_length=True,
+                )
+                self.assert_batch_padded_input_match(input_r, input_p, max_length, pad_token_id)
+
+                input_r = tokenizer_r.batch_encode_plus(
+                    html_strings,
+                    max_length=max_length,
+                    padding="max_length",
+                )
+                input_p = tokenizer_p.batch_encode_plus(
+                    html_strings,
+                    max_length=max_length,
+                    padding="max_length",
+                )
+                self.assert_batch_padded_input_match(input_r, input_p, max_length, pad_token_id)
+
+                input_r = tokenizer_r.batch_encode_plus(
+                    html_strings,
+                    max_length=max_length,
+                    padding="longest",
+                )
+                input_p = tokenizer_p.batch_encode_plus(
+                    html_strings,
+                    max_length=max_length,
+                    padding=True,
+                )
+                self.assert_batch_padded_input_match(input_r, input_p, len(input_r["input_ids"][0]), pad_token_id)
+
+                input_r = tokenizer_r.batch_encode_plus(html_strings, padding="longest")
+                input_p = tokenizer_p.batch_encode_plus(html_strings, padding=True)
+                self.assert_batch_padded_input_match(input_r, input_p, len(input_r["input_ids"][0]), pad_token_id)
+
+                # Batch_encode_plus - Pair input
+                questions, html_strings = self.get_multiple_html_strings_pair()
+
+                input_r = tokenizer_r.batch_encode_plus(
+                    list(zip(questions, html_strings)),
+                    is_pair=True,
+                    max_length=max_length,
+                    truncation=True,
+                    padding="max_length",
+                )
+                input_p = tokenizer_p.batch_encode_plus(
+                    list(zip(questions, html_strings)),
+                    is_pair=True,
+                    max_length=max_length,
+                    truncation=True,
+                    padding="max_length",
+                )
+                self.assert_batch_padded_input_match(input_r, input_p, max_length, pad_token_id)
+
+                input_r = tokenizer_r.batch_encode_plus(
+                    list(zip(questions, html_strings)),
+                    is_pair=True,
+                    padding=True,
+                )
+                input_p = tokenizer_p.batch_encode_plus(
+                    list(zip(questions, html_strings)),
+                    is_pair=True,
+                    padding="longest",
+                )
+                self.assert_batch_padded_input_match(input_r, input_p, len(input_r["input_ids"][0]), pad_token_id)
+
+                # Using pad on single examples after tokenization
+                input_r = tokenizer_r.encode_plus(html_string)
+                input_r = tokenizer_r.pad(input_r)
+
+                input_p = tokenizer_p.encode_plus(html_string)
+                input_p = tokenizer_p.pad(input_p)
+
+                self.assert_padded_input_match(
+                    input_r["input_ids"], input_p["input_ids"], len(input_r["input_ids"]), pad_token_id
                 )
 
-                tokenizer_r = self.rust_tokenizer_class.from_pretrained(
-                    pretrained_name, use_fast=True, add_prefix_space=False, trim_offsets=False
-                )
-                encoding = tokenizer_r(text, return_offsets_mapping=True, add_special_tokens=False)
-                self.assertEqual(encoding.offset_mapping[0], (0, 1 + len(text_of_1_token)))
-                self.assertEqual(
-                    encoding.offset_mapping[1],
-                    (1 + len(text_of_1_token), 1 + len(text_of_1_token) + 1 + len(text_of_1_token)),
-                )
+                # Using pad on single examples after tokenization
+                input_r = tokenizer_r.encode_plus(html_string)
+                input_r = tokenizer_r.pad(input_r, max_length=max_length, padding="max_length")
+
+                input_p = tokenizer_p.encode_plus(html_string)
+                input_p = tokenizer_p.pad(input_p, max_length=max_length, padding="max_length")
+
+                self.assert_padded_input_match(input_r["input_ids"], input_p["input_ids"], max_length, pad_token_id)
+
+                # Using pad after tokenization
+                input_r = tokenizer_r.batch_encode_plus(html_strings)
+                input_r = tokenizer_r.pad(input_r)
+
+                input_p = tokenizer_p.batch_encode_plus(html_strings)
+                input_p = tokenizer_p.pad(input_p)
+
+                self.assert_batch_padded_input_match(input_r, input_p, len(input_r["input_ids"][0]), pad_token_id)
+
+                # Using pad after tokenization
+                input_r = tokenizer_r.batch_encode_plus(html_strings)
+                input_r = tokenizer_r.pad(input_r, max_length=max_length, padding="max_length")
+
+                input_p = tokenizer_p.batch_encode_plus(html_strings)
+                input_p = tokenizer_p.pad(input_p, max_length=max_length, padding="max_length")
+
+                self.assert_batch_padded_input_match(input_r, input_p, max_length, pad_token_id)
+
+                # Test padding nested empty lists (in some use-cases, there is no any token id in the `input_ids` list).
+                input_r = tokenizer_r.pad({"input_ids": [[], []]}, max_length=max_length, padding="max_length")
+                input_p = tokenizer_p.pad({"input_ids": [[], []]}, max_length=max_length, padding="max_length")
+                self.assert_batch_padded_input_match(input_r, input_p, max_length, pad_token_id)
 
     def test_training_new_tokenizer(self):
         # This feature only exists for fast tokenizers
@@ -601,3 +826,104 @@ class MarkupLMTokenizationTest(TokenizerTesterMixin, unittest.TestCase):
         )
 
         self.assertDictEqual(tokenizer.special_tokens_map, new_tokenizer.special_tokens_map)
+
+    def test_training_new_tokenizer_with_special_tokens_change(self):
+        # This feature only exists for fast tokenizers
+        if not self.test_rust_tokenizer:
+            return
+
+        tokenizer = self.get_rust_tokenizer()
+        # Test with a special tokens map
+        class_signature = inspect.signature(tokenizer.__class__)
+        if "cls_token" in class_signature.parameters:
+            new_tokenizer = tokenizer.train_new_from_iterator(
+                SMALL_TRAINING_CORPUS, 100, special_tokens_map={tokenizer.cls_token: "<cls>"}
+            )
+            cls_id = new_tokenizer.get_vocab()["<cls>"]
+            self.assertEqual(new_tokenizer.cls_token, "<cls>")
+            self.assertEqual(new_tokenizer.cls_token_id, cls_id)
+
+        # Create a new mapping from the special tokens defined in the original tokenizer
+        special_tokens_list = SpecialTokensMixin.SPECIAL_TOKENS_ATTRIBUTES.copy()
+        special_tokens_list.remove("additional_special_tokens")
+        special_tokens_map = {}
+        for token in special_tokens_list:
+            # Get the private one to avoid unnecessary warnings.
+            if getattr(tokenizer, f"_{token}") is not None:
+                special_token = getattr(tokenizer, token)
+                special_tokens_map[special_token] = f"{special_token}a"
+
+        # Train new tokenizer
+        new_tokenizer = tokenizer.train_new_from_iterator(
+            SMALL_TRAINING_CORPUS, 100, special_tokens_map=special_tokens_map
+        )
+
+        # Check the changes
+        for token in special_tokens_list:
+            # Get the private one to avoid unnecessary warnings.
+            if getattr(tokenizer, f"_{token}") is None:
+                continue
+            special_token = getattr(tokenizer, token)
+            if special_token in special_tokens_map:
+                new_special_token = getattr(new_tokenizer, token)
+                self.assertEqual(special_tokens_map[special_token], new_special_token)
+
+                new_id = new_tokenizer.get_vocab()[new_special_token]
+                self.assertEqual(getattr(new_tokenizer, f"{token}_id"), new_id)
+
+        # Check if the AddedToken / string format has been kept
+        for special_token in tokenizer.all_special_tokens_extended:
+            if isinstance(special_token, AddedToken) and special_token.content not in special_tokens_map:
+                # The special token must appear identically in the list of the new tokenizer.
+                self.assertTrue(
+                    special_token in new_tokenizer.all_special_tokens_extended,
+                    f"'{special_token}' should be in {new_tokenizer.all_special_tokens_extended}",
+                )
+            elif isinstance(special_token, AddedToken):
+                # The special token must appear in the list of the new tokenizer as an object of type AddedToken with
+                # the same parameters as the old AddedToken except the content that the user has requested to change.
+                special_token_str = special_token.content
+                new_special_token_str = special_tokens_map[special_token_str]
+
+                find = False
+                for candidate in new_tokenizer.all_special_tokens_extended:
+                    if (
+                        isinstance(candidate, AddedToken)
+                        and candidate.content == new_special_token_str
+                        and candidate.lstrip == special_token.lstrip
+                        and candidate.rstrip == special_token.rstrip
+                        and candidate.normalized == special_token.normalized
+                        and candidate.single_word == special_token.single_word
+                    ):
+                        find = True
+                        break
+                self.assertTrue(
+                    find,
+                    (
+                        f"'{new_special_token_str}' doesn't appear in the list "
+                        f"'{new_tokenizer.all_special_tokens_extended}' as an AddedToken with the same parameters as "
+                        f"'{special_token}' in the list {tokenizer.all_special_tokens_extended}"
+                    ),
+                )
+            elif special_token not in special_tokens_map:
+                # The special token must appear identically in the list of the new tokenizer.
+                self.assertTrue(
+                    special_token in new_tokenizer.all_special_tokens_extended,
+                    f"'{special_token}' should be in {new_tokenizer.all_special_tokens_extended}",
+                )
+
+            else:
+                # The special token must appear in the list of the new tokenizer as an object of type string.
+                self.assertTrue(special_tokens_map[special_token] in new_tokenizer.all_special_tokens_extended)
+
+        # Test we can use the new tokenizer with something not seen during training
+        inputs = new_tokenizer(
+            ["<html> This is the first sentence </html>", "<html> This sentence is different 🤗. </html>"]
+        )
+        self.assertEqual(len(inputs["input_ids"]), 2)
+        decoded_input = new_tokenizer.decode(inputs["input_ids"][0], skip_special_tokens=True)
+        expected_result = "This is the first sentence"
+
+        if tokenizer.backend_tokenizer.normalizer is not None:
+            expected_result = tokenizer.backend_tokenizer.normalizer.normalize_str(expected_result)
+        self.assertEqual(expected_result, decoded_input)
