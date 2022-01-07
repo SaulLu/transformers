@@ -126,6 +126,57 @@ class MarkupLMTokenizationTest(TokenizerTesterMixin, unittest.TestCase):
                 )
                 self.assertEqual(len(encoded_special_token), 1)
     
+    def test_add_tokens_tokenizer(self):
+        tokenizers = self.get_tokenizers(do_lower_case=False)
+        for tokenizer in tokenizers:
+            with self.subTest(f"{tokenizer.__class__.__name__}"):
+                vocab_size = tokenizer.vocab_size
+                all_size = len(tokenizer)
+
+                self.assertNotEqual(vocab_size, 0)
+
+                # We usually have added tokens from the start in tests because our vocab fixtures are
+                # smaller than the original vocabs - let's not assert this
+                # self.assertEqual(vocab_size, all_size)
+
+                new_toks = ["aaaaa bbbbbb", "cccccccccdddddddd"]
+                added_toks = tokenizer.add_tokens(new_toks)
+                vocab_size_2 = tokenizer.vocab_size
+                all_size_2 = len(tokenizer)
+
+                self.assertNotEqual(vocab_size_2, 0)
+                self.assertEqual(vocab_size, vocab_size_2)
+                self.assertEqual(added_toks, len(new_toks))
+                self.assertEqual(all_size_2, all_size + len(new_toks))
+
+                tokens = tokenizer.encode("<html> aaaaa bbbbbb low cccccccccdddddddd l </html>", add_special_tokens=False)
+
+                self.assertGreaterEqual(len(tokens), 4)
+                self.assertGreater(tokens[0], tokenizer.vocab_size - 1)
+                self.assertGreater(tokens[-2], tokenizer.vocab_size - 1)
+
+                new_toks_2 = {"eos_token": ">>>>|||<||<<|<<", "pad_token": "<<<<<|||>|>>>>|>"}
+                added_toks_2 = tokenizer.add_special_tokens(new_toks_2)
+                vocab_size_3 = tokenizer.vocab_size
+                all_size_3 = len(tokenizer)
+
+                self.assertNotEqual(vocab_size_3, 0)
+                self.assertEqual(vocab_size, vocab_size_3)
+                self.assertEqual(added_toks_2, len(new_toks_2))
+                self.assertEqual(all_size_3, all_size_2 + len(new_toks_2))
+
+                tokens = tokenizer.encode(
+                    "<html> >>>>|||<||<<|<< aaaaabbbbbb low cccccccccdddddddd <<<<<|||>|>>>>|> l </html>", add_special_tokens=False
+                )
+
+                self.assertGreaterEqual(len(tokens), 6)
+                self.assertGreater(tokens[0], tokenizer.vocab_size - 1)
+                self.assertGreater(tokens[0], tokens[1])
+                self.assertGreater(tokens[-2], tokenizer.vocab_size - 1)
+                self.assertGreater(tokens[-2], tokens[-3])
+                self.assertEqual(tokens[0], tokenizer.eos_token_id)
+                self.assertEqual(tokens[-2], tokenizer.pad_token_id)
+    
     @slow
     def test_sequence_builders(self):
         tokenizer = self.tokenizer_class.from_pretrained("microsoft/markuplm-base")
@@ -146,49 +197,38 @@ class MarkupLMTokenizationTest(TokenizerTesterMixin, unittest.TestCase):
         assert encoded_sentence == encoded_text_from_decode
         assert encoded_pair == encoded_pair_from_decode
 
-    def test_space_encoding(self):
-        tokenizer = self.get_tokenizer()
-
-        sequence = "Encode this sequence."
-        space_encoding = tokenizer.byte_encoder[" ".encode("utf-8")[0]]
-
-        # Testing encoder arguments
-        encoded = tokenizer.encode(sequence, add_special_tokens=False, add_prefix_space=False)
-        first_char = tokenizer.convert_ids_to_tokens(encoded[0])[0]
-        self.assertNotEqual(first_char, space_encoding)
-
-        encoded = tokenizer.encode(sequence, add_special_tokens=False, add_prefix_space=True)
-        first_char = tokenizer.convert_ids_to_tokens(encoded[0])[0]
-        self.assertEqual(first_char, space_encoding)
-
-        tokenizer.add_special_tokens({"bos_token": "<s>"})
-        encoded = tokenizer.encode(sequence, add_special_tokens=True)
-        first_char = tokenizer.convert_ids_to_tokens(encoded[1])[0]
-        self.assertNotEqual(first_char, space_encoding)
-
-        # Testing spaces after special tokens
-        mask = "<mask>"
-        tokenizer.add_special_tokens(
-            {"mask_token": AddedToken(mask, lstrip=True, rstrip=False)}
-        )  # mask token has a left space
-        mask_ind = tokenizer.convert_tokens_to_ids(mask)
-
-        sequence = "Encode <mask> sequence"
-        sequence_nospace = "Encode <mask>sequence"
-
-        encoded = tokenizer.encode(sequence)
-        mask_loc = encoded.index(mask_ind)
-        first_char = tokenizer.convert_ids_to_tokens(encoded[mask_loc + 1])[0]
-        self.assertEqual(first_char, space_encoding)
-
-        encoded = tokenizer.encode(sequence_nospace)
-        mask_loc = encoded.index(mask_ind)
-        first_char = tokenizer.convert_ids_to_tokens(encoded[mask_loc + 1])[0]
-        self.assertNotEqual(first_char, space_encoding)
-
     def test_pretokenized_inputs(self):
         pass
 
+    # TODO: this test can be combined with `test_sentencepiece_tokenize_and_convert_tokens_to_string` after the latter is extended to all tokenizers.
+    def test_tokenize_special_tokens(self):
+        """Test `tokenize` with special tokens."""
+        tokenizers = self.get_tokenizers(fast=True, do_lower_case=True)
+        for tokenizer in tokenizers:
+            with self.subTest(f"{tokenizer.__class__.__name__}"):
+                print("Tokenizer:", tokenizer)
+                
+                SPECIAL_TOKEN_1 = "[SPECIAL_TOKEN_1]"
+                SPECIAL_TOKEN_2 = "[SPECIAL_TOKEN_2]"
+
+                # TODO:
+                # Can we combine `unique_no_split_tokens` and `all_special_tokens`(and properties related to it)
+                # with one variable(property) for a better maintainability?
+
+                # `add_tokens` method stores special tokens only in `tokenizer.unique_no_split_tokens`. (in tokenization_utils.py)
+                tokenizer.add_tokens([SPECIAL_TOKEN_1], special_tokens=True)
+                # `add_special_tokens` method stores special tokens in `tokenizer.additional_special_tokens`,
+                # which also occur in `tokenizer.all_special_tokens`. (in tokenization_utils_base.py)
+                tokenizer.add_special_tokens({"additional_special_tokens": [SPECIAL_TOKEN_2]})
+
+                token_1 = tokenizer.tokenize(SPECIAL_TOKEN_1)
+                token_2 = tokenizer.tokenize(SPECIAL_TOKEN_2)
+
+                self.assertEqual(len(token_1), 1)
+                self.assertEqual(len(token_2), 1)
+                self.assertEqual(token_1[0], SPECIAL_TOKEN_1)
+                self.assertEqual(token_2[0], SPECIAL_TOKEN_2)
+    
     def test_embeded_special_tokens(self):
         for tokenizer, pretrained_name, kwargs in self.tokenizers_list:
             with self.subTest(f"{tokenizer.__class__.__name__} ({pretrained_name})"):
