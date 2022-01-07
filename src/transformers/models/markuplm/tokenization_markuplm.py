@@ -445,8 +445,8 @@ class MarkupLMTokenizer(PreTrainedTokenizer):
                 writer.write(" ".join(bpe_tokens) + "\n")
                 index += 1
 
-        with open(vocab_file, "w", encoding="utf-8") as f:
-            f.write(json.dumps(self.encoder, ensure_ascii=False))
+        with open(tags_dict_file, "w", encoding="utf-8") as f:
+            f.write(json.dumps(self.tags_dict, ensure_ascii=False))
 
         return vocab_file, merge_file, tags_dict_file
 
