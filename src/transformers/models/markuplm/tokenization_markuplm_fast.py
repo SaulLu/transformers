@@ -18,8 +18,8 @@ and _encode_plus, in which the Rust tokenizer is used.
 """
 
 import html
-import os
 import json
+import os
 from typing import Dict, List, Optional, Tuple, Union
 
 from tokenizers import pre_tokenizers, processors
@@ -166,6 +166,9 @@ class MarkupLMTokenizerFast(PreTrainedTokenizerFast):
             mask_token=mask_token,
             add_prefix_space=add_prefix_space,
             trim_offsets=trim_offsets,
+            max_depth=max_depth,
+            max_width=max_width,
+            pad_width=pad_width,
             **kwargs,
         )
 
@@ -715,9 +718,9 @@ class MarkupLMTokenizerFast(PreTrainedTokenizerFast):
 
     def save_vocabulary(self, save_directory: str, filename_prefix: Optional[str] = None) -> Tuple[str]:
         files = self._tokenizer.model.save(save_directory, name=filename_prefix)
-        
+
         tags_dict_file = os.path.join(
             save_directory, (filename_prefix + "-" if filename_prefix else "") + VOCAB_FILES_NAMES["tags_dict"]
         )
-        
+
         return tuple(files) + (tags_dict_file,)

@@ -253,6 +253,9 @@ class MarkupLMTokenizer(PreTrainedTokenizer):
             pad_token=pad_token,
             mask_token=mask_token,
             add_prefix_space=add_prefix_space,
+            max_depth=max_depth,
+            max_width=max_width,
+            pad_width=pad_width,
             **kwargs,
         )
 
@@ -898,6 +901,8 @@ class MarkupLMTokenizer(PreTrainedTokenizer):
 
         # Truncation: Handle max sequence length
         overflowing_tokens = []
+        overflowing_xpath_tags_seq = []
+        overflowing_xpath_subs_seq = []
         if truncation_strategy != TruncationStrategy.DO_NOT_TRUNCATE and max_length and total_len > max_length:
             (
                 ids,
