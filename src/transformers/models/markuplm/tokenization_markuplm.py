@@ -256,8 +256,8 @@ class MarkupLMTokenizer(PreTrainedTokenizer):
 
         with open(vocab_file, encoding="utf-8") as vocab_handle:
             self.encoder = json.load(vocab_handle)
-        with open(tags_dict, encoding="utf-8") as tags_dict_handle:
-            self.tags_dict = json.load(tags_dict_handle)
+
+        self.tags_dict = tags_dict
         self.decoder = {v: k for k, v in self.encoder.items()}
         self.errors = errors  # how to handle errors in decoding
         self.byte_encoder = bytes_to_unicode()
@@ -420,9 +420,6 @@ class MarkupLMTokenizer(PreTrainedTokenizer):
         merge_file = os.path.join(
             save_directory, (filename_prefix + "-" if filename_prefix else "") + VOCAB_FILES_NAMES["merges_file"]
         )
-        tags_dict_file = os.path.join(
-            save_directory, (filename_prefix + "-" if filename_prefix else "") + VOCAB_FILES_NAMES["tags_dict"]
-        )
 
         # save vocab_file
         with open(vocab_file, "w", encoding="utf-8") as f:
@@ -442,11 +439,7 @@ class MarkupLMTokenizer(PreTrainedTokenizer):
                 writer.write(" ".join(bpe_tokens) + "\n")
                 index += 1
 
-        # save tags_dict_file
-        with open(tags_dict_file, "w", encoding="utf-8") as f:
-            f.write(json.dumps(self.tags_dict, ensure_ascii=False))
-
-        return vocab_file, merge_file, tags_dict_file
+        return vocab_file, merge_file
 
     def prepare_for_tokenization(self, text, is_split_into_words=False, **kwargs):
         add_prefix_space = kwargs.pop("add_prefix_space", self.add_prefix_space)

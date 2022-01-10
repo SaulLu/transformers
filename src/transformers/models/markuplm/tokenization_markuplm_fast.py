@@ -174,8 +174,8 @@ class MarkupLMTokenizerFast(PreTrainedTokenizerFast):
             self.backend_tokenizer.pre_tokenizer = pre_tok_class(**pre_tok_state)
 
         self.add_prefix_space = add_prefix_space
-        with open(tags_dict, encoding="utf-8") as tags_dict_handle:
-            self.tags_dict = json.load(tags_dict_handle)
+
+        self.tags_dict = tags_dict
 
         tokenizer_component = "post_processor"
         tokenizer_component_instance = getattr(self.backend_tokenizer, tokenizer_component, None)
@@ -719,11 +719,7 @@ class MarkupLMTokenizerFast(PreTrainedTokenizerFast):
             return len(cls + token_ids_0 + sep) * [0]
         return len(cls + token_ids_0 + sep + sep + token_ids_1 + sep) * [0]
 
-    # def save_vocabulary(self, save_directory: str, filename_prefix: Optional[str] = None) -> Tuple[str]:
-    #     files = self._tokenizer.model.save(save_directory, name=filename_prefix)
+    def save_vocabulary(self, save_directory: str, filename_prefix: Optional[str] = None) -> Tuple[str]:
+        files = self._tokenizer.model.save(save_directory, name=filename_prefix)
 
-    #     tags_dict_file = os.path.join(
-    #         save_directory, (filename_prefix + "-" if filename_prefix else "") + VOCAB_FILES_NAMES["tags_dict"]
-    #     )
-
-    #     return tuple(files) + (tags_dict_file,)
+        return tuple(files)
