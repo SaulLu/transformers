@@ -71,7 +71,7 @@ class MarkupLMTokenizationTest(TokenizerTesterMixin, unittest.TestCase):
         ]
         vocab_tokens = dict(zip(vocab, range(len(vocab))))
         merges = ["#version: 0.2", "\u0120 l", "\u0120l o", "\u0120lo w", "e r", ""]
-        tags_dict = {"a": 0, "abbr": 1, "acronym": 2, "address": 3}
+        self.tags_dict = {"a": 0, "abbr": 1, "acronym": 2, "address": 3}
         self.special_tokens_map = {"unk_token": "<unk>"}
 
         self.vocab_file = os.path.join(self.tmpdirname, VOCAB_FILES_NAMES["vocab_file"])
@@ -83,7 +83,7 @@ class MarkupLMTokenizationTest(TokenizerTesterMixin, unittest.TestCase):
         with open(self.merges_file, "w", encoding="utf-8") as fp:
             fp.write("\n".join(merges))
         with open(self.tokenizer_config_file, "w", encoding="utf-8") as fp:
-            fp.write(json.dumps({"tags_dict": tags_dict}))
+            fp.write(json.dumps({"tags_dict": self.tags_dict}))
 
     # def get_clean_sequence(self, tokenizer):
     #     html_string = "<html> hello world </html>"
