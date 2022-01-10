@@ -48,7 +48,6 @@ from bs4 import BeautifulSoup
 VOCAB_FILES_NAMES = {
     "vocab_file": "vocab.json",
     "merges_file": "merges.txt",
-    "tags_dict": "tags_dict.json",
 }
 
 PRETRAINED_VOCAB_FILES_MAP = {
@@ -59,10 +58,6 @@ PRETRAINED_VOCAB_FILES_MAP = {
     "merges_file": {
         "SaulLu/markuplm-base": "https://huggingface.co/SaulLu/markuplm-base/resolve/main/merges.txt",
         "SaulLu/markuplm-large": "https://huggingface.co/SaulLu/markuplm-large/resolve/main/merges.txt",
-    },
-    "tags_dict": {
-        "SaulLu/markuplm-base": "https://huggingface.co/SaulLu/markuplm-base/resolve/main/tags_dict.json",
-        "SaulLu/markuplm-large": "https://huggingface.co/SaulLu/markuplm-large/resolve/main/tags_dict.json",
     },
 }
 
