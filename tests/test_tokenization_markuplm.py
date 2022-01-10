@@ -76,13 +76,14 @@ class MarkupLMTokenizationTest(TokenizerTesterMixin, unittest.TestCase):
 
         self.vocab_file = os.path.join(self.tmpdirname, VOCAB_FILES_NAMES["vocab_file"])
         self.merges_file = os.path.join(self.tmpdirname, VOCAB_FILES_NAMES["merges_file"])
-        self.tags_dict = os.path.join(self.tmpdirname, VOCAB_FILES_NAMES["tags_dict"])
+        self.tokenizer_config_file = os.path.join(self.tmpdirname, "tokenizer_config.json")
+
         with open(self.vocab_file, "w", encoding="utf-8") as fp:
             fp.write(json.dumps(vocab_tokens) + "\n")
         with open(self.merges_file, "w", encoding="utf-8") as fp:
             fp.write("\n".join(merges))
-        with open(self.tags_dict, "w", encoding="utf-8") as fp:
-            fp.write(json.dumps(tags_dict) + "\n")
+        with open(self.tokenizer_config_file, "w", encoding="utf-8") as fp:
+            fp.write(json.dumps({"tags_dict": tags_dict}))
 
     # def get_clean_sequence(self, tokenizer):
     #     html_string = "<html> hello world </html>"
