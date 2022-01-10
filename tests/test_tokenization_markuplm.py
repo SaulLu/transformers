@@ -927,3 +927,16 @@ class MarkupLMTokenizationTest(TokenizerTesterMixin, unittest.TestCase):
         if tokenizer.backend_tokenizer.normalizer is not None:
             expected_result = tokenizer.backend_tokenizer.normalizer.normalize_str(expected_result)
         self.assertEqual(expected_result, decoded_input)
+
+    def test_tokenize_slow_fast_equal(self):
+        for tokenizer, pretrained_name, kwargs in self.tokenizers_list:
+            with self.subTest(f"{tokenizer.__class__.__name__} ({pretrained_name})"):
+                tokenizer_r = self.rust_tokenizer_class.from_pretrained(pretrained_name, **kwargs)
+                tokenizer_p = self.tokenizer_class.from_pretrained(pretrained_name, **kwargs)
+
+                text = "<html><h1> this is a test </h1></html>"
+
+                tokenizer_output_r = tokenizer_r.tokenize(text)
+                tokenizer_output_p = tokenizer_p.tokenize(text)
+
+                self.assertListEqual(tokenizer_output_r, tokenizer_output_p)
