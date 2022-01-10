@@ -1,8 +1,8 @@
 from transformers import MarkupLMTokenizer, MarkupLMTokenizerFast
 
 
-slow_tokenizer = MarkupLMTokenizer.from_pretrained("microsoft/markuplm-base")
-fast_tokenizer = MarkupLMTokenizerFast.from_pretrained("microsoft/markuplm-base")
+slow_tokenizer = MarkupLMTokenizer.from_pretrained("SaulLu/markuplm-base")
+fast_tokenizer = MarkupLMTokenizerFast.from_pretrained("SaulLu/markuplm-base")
 
 text = "<html> HuggingFace is solving NLP one commit at a time </html>"
 
