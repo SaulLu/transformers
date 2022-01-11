@@ -51,13 +51,13 @@ from .configuration_markuplm import MarkupLMConfig
 
 logger = logging.get_logger(__name__)
 
-_CHECKPOINT_FOR_DOC = "SaulLu/markuplm-base"
+_CHECKPOINT_FOR_DOC = "microsoft/markuplm-base"
 _CONFIG_FOR_DOC = "MarkupLMConfig"
 _TOKENIZER_FOR_DOC = "MarkupLMTokenizer"
 
 MARKUPLM_PRETRAINED_MODEL_ARCHIVE_LIST = [
-    "SaulLu/markuplm-base",
-    "SaulLu/markuplm-large",
+    "microsoft/markuplm-base",
+    "microsoft/markuplm-large",
 ]
 
 MarkupLMLayerNorm = torch.nn.LayerNorm

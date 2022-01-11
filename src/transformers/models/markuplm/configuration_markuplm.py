@@ -21,8 +21,8 @@ from transformers.utils import logging
 logger = logging.get_logger(__name__)
 
 MARKUPLM_PRETRAINED_CONFIG_ARCHIVE_MAP = {
-    "SaulLu/markuplm-base": "https://huggingface.co/SaulLu/markuplm-base/resolve/main/config.json",
-    "SaulLu/markuplm-large": "https://huggingface.co/SaulLu/markuplm-large/resolve/main/config.json",
+    "microsoft/markuplm-base": "https://huggingface.co/microsoft/markuplm-base/resolve/main/config.json",
+    "microsoft/markuplm-large": "https://huggingface.co/microsoft/markuplm-large/resolve/main/config.json",
 }
 
 
@@ -30,7 +30,7 @@ class MarkupLMConfig(RobertaConfig):
     r"""
     This is the configuration class to store the configuration of a [`MarkupLMModel`]. It is used to
     instantiate a MarkupLM model according to the specified arguments, defining the model architecture. Instantiating a
-    configuration with the defaults will yield a similar configuration to that of the MarkupLM [markuplm-base-uncased](https://huggingface.co/SaulLu/markuplm-base-uncased) architecture.
+    configuration with the defaults will yield a similar configuration to that of the MarkupLM [markuplm-base-uncased](https://huggingface.co/microsoft/markuplm-base-uncased) architecture.
 
     Configuration objects inherit from [`BertConfig`] and can be used to control the model outputs.
     Read the documentation from [`BertConfig`] for more information.
@@ -90,10 +90,10 @@ class MarkupLMConfig(RobertaConfig):
     ```python
     >>> from transformers import MarkupLMModel, MarkupLMConfig
 
-    >>> # Initializing a MarkupLM SaulLu/markuplm-base style configuration
+    >>> # Initializing a MarkupLM microsoft/markuplm-base style configuration
     >>> configuration = MarkupLMConfig()
 
-    >>> # Initializing a model from the SaulLu/markuplm-base style configuration
+    >>> # Initializing a model from the microsoft/markuplm-base style configuration
     >>> model = MarkupLMModel(configuration)
 
     >>> # Accessing the model configuration

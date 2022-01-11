@@ -534,7 +534,7 @@ class MarkupLMTokenizationTest(TokenizerTesterMixin, unittest.TestCase):
 
     @slow
     def test_sequence_builders(self):
-        tokenizer = self.tokenizer_class.from_pretrained("SaulLu/markuplm-base")
+        tokenizer = self.tokenizer_class.from_pretrained("microsoft/markuplm-base")
 
         text = tokenizer.encode("sequence builders", add_special_tokens=False)
         text_2 = tokenizer.encode("multi-sequence build", add_special_tokens=False)

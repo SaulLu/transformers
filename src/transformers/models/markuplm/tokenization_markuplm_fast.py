@@ -57,18 +57,18 @@ VOCAB_FILES_NAMES = {
 
 PRETRAINED_VOCAB_FILES_MAP = {
     "vocab_file": {
-        "SaulLu/markuplm-base": "https://huggingface.co/SaulLu/markuplm-base/resolve/main/vocab.json",
-        "SaulLu/markuplm-large": "https://huggingface.co/SaulLu/markuplm-large/resolve/main/vocab.json",
+        "microsoft/markuplm-base": "https://huggingface.co/microsoft/markuplm-base/resolve/main/vocab.json",
+        "microsoft/markuplm-large": "https://huggingface.co/microsoft/markuplm-large/resolve/main/vocab.json",
     },
     "merges_file": {
-        "SaulLu/markuplm-base": "https://huggingface.co/SaulLu/markuplm-base/resolve/main/merges.txt",
-        "SaulLu/markuplm-large": "https://huggingface.co/SaulLu/markuplm-large/resolve/main/merges.txt",
+        "microsoft/markuplm-base": "https://huggingface.co/microsoft/markuplm-base/resolve/main/merges.txt",
+        "microsoft/markuplm-large": "https://huggingface.co/microsoft/markuplm-large/resolve/main/merges.txt",
     },
 }
 
 PRETRAINED_POSITIONAL_EMBEDDINGS_SIZES = {
-    "SaulLu/markuplm-base": 512,
-    "SaulLu/markuplm-large": 512,
+    "microsoft/markuplm-base": 512,
+    "microsoft/markuplm-large": 512,
 }
 
 

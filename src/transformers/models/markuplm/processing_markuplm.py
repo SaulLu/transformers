@@ -486,7 +486,7 @@ if __name__ == "__main__":
     with open(page_name_3) as f:
         multi_html_strings.append(f.read())
 
-    tokenizer = RobertaTokenizerFast.from_pretrained("SaulLu/markuplm-base", add_prefix_space=True)
+    tokenizer = RobertaTokenizerFast.from_pretrained("microsoft/markuplm-base", add_prefix_space=True)
     processor = MarkupLMProcessor(tokenizer)
 
     print("Checking equivalence between Microsoft processor and Huggingface tokenizers")
