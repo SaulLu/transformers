@@ -246,7 +246,12 @@ _import_structure = {
     "models.lxmert": ["LXMERT_PRETRAINED_CONFIG_ARCHIVE_MAP", "LxmertConfig", "LxmertTokenizer"],
     "models.m2m_100": ["M2M_100_PRETRAINED_CONFIG_ARCHIVE_MAP", "M2M100Config"],
     "models.marian": ["MarianConfig"],
-    "models.markuplm": ["MARKUPLM_PRETRAINED_CONFIG_ARCHIVE_MAP", "MarkupLMConfig", "MarkupLMTokenizer"],
+    "models.markuplm": [
+        "MARKUPLM_PRETRAINED_CONFIG_ARCHIVE_MAP",
+        "MarkupLMConfig",
+        "MarkupLMTokenizer",
+        "MarkupLMFeatureExtractor",
+    ],
     "models.mbart": ["MBartConfig"],
     "models.mbart50": [],
     "models.megatron_bert": ["MEGATRON_BERT_PRETRAINED_CONFIG_ARCHIVE_MAP", "MegatronBertConfig"],
@@ -2501,7 +2506,12 @@ if TYPE_CHECKING:
     from .models.lxmert import LXMERT_PRETRAINED_CONFIG_ARCHIVE_MAP, LxmertConfig, LxmertTokenizer
     from .models.m2m_100 import M2M_100_PRETRAINED_CONFIG_ARCHIVE_MAP, M2M100Config
     from .models.marian import MarianConfig
-    from .models.markuplm import MARKUPLM_PRETRAINED_CONFIG_ARCHIVE_MAP, MarkupLMConfig, MarkupLMTokenizer
+    from .models.markuplm import (
+        MARKUPLM_PRETRAINED_CONFIG_ARCHIVE_MAP,
+        MarkupLMConfig,
+        MarkupLMFeatureExtractor,
+        MarkupLMTokenizer,
+    )
     from .models.mbart import MBartConfig
     from .models.megatron_bert import MEGATRON_BERT_PRETRAINED_CONFIG_ARCHIVE_MAP, MegatronBertConfig
     from .models.mmbt import MMBTConfig
