@@ -3742,6 +3742,42 @@ class TokenizerTesterMixin:
                     # Should not raise an error
                     self.rust_tokenizer_class.from_pretrained(tmp_dir_2)
 
+    def test_edges_cases_alignment_between_slow_and_fast(self):
+        if not self.test_slow_tokenizer or not self.test_rust_tokenizer:
+            # we need both slow and fast versions
+            return
+
+        for tokenizer, pretrained_name, kwargs in self.tokenizers_list:
+            with self.subTest(f"{tokenizer.__class__.__name__} ({pretrained_name})"):
+                tokenizer_f = self.rust_tokenizer_class.from_pretrained(pretrained_name, **kwargs)
+                tokenizer_s = self.tokenizer_class.from_pretrained(pretrained_name, **kwargs)
+
+                text = "\u0041\u0302\u0300" + " " + "\u0041\u0302\u0300"  # Ầ  Ầ
+
+                tokens_f = tokenizer_f.convert_ids_to_tokens(tokenizer_f.encode(text))
+                tokens_s = tokenizer_s.convert_ids_to_tokens(tokenizer_s.encode(text))
+                print(tokens_s)
+
+                self.assertListEqual(tokens_f, tokens_s)
+
+    def test_edges_cases_alignment_between_slow_and_fast_2(self):
+        if not self.test_slow_tokenizer or not self.test_rust_tokenizer:
+            # we need both slow and fast versions
+            return
+
+        for tokenizer, pretrained_name, kwargs in self.tokenizers_list:
+            with self.subTest(f"{tokenizer.__class__.__name__} ({pretrained_name})"):
+                tokenizer_f = self.rust_tokenizer_class.from_pretrained(pretrained_name, **kwargs)
+                tokenizer_s = self.tokenizer_class.from_pretrained(pretrained_name, **kwargs)
+
+                text = "\u1ea6" + " " + "\u1ea6"  # Ầ Ầ
+
+                tokens_f = tokenizer_f.convert_ids_to_tokens(tokenizer_f.encode(text))
+                tokens_s = tokenizer_s.convert_ids_to_tokens(tokenizer_s.encode(text))
+                print(tokens_s)
+
+                self.assertListEqual(tokens_f, tokens_s)
+
 
 class TokenizerUtilTester(unittest.TestCase):
     def test_cached_files_are_used_when_internet_is_down(self):
