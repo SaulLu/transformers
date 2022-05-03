@@ -39,7 +39,7 @@ PROCESSOR_MAPPING_NAMES = OrderedDict(
     [
         ("clip", "CLIPProcessor"),
         ("layoutlmv2", "LayoutLMv2Processor"),
-        ("layoutlmv3", "LayoutLMv2Processor"),
+        ("layoutlmv3", "LayoutLMv3Processor"),
         ("layoutxlm", "LayoutXLMProcessor"),
         ("speech_to_text", "Speech2TextProcessor"),
         ("speech_to_text_2", "Speech2Text2Processor"),
