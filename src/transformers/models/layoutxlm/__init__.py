@@ -27,7 +27,9 @@ from ...utils import (
 )
 
 
-_import_structure = {}
+_import_structure = {
+    "processing_layoutxlm": ["LayoutXLMProcessor"],
+}
 
 if is_sentencepiece_available():
     _import_structure["tokenization_layoutxlm"] = ["LayoutXLMTokenizer"]
@@ -35,18 +37,14 @@ if is_sentencepiece_available():
 if is_tokenizers_available():
     _import_structure["tokenization_layoutxlm_fast"] = ["LayoutXLMTokenizerFast"]
 
-if is_vision_available():
-    _import_structure["processing_layoutxlm"] = ["LayoutXLMProcessor"]
-
 if TYPE_CHECKING:
+    from .processing_layoutxlm import LayoutXLMProcessor
+
     if is_sentencepiece_available():
         from .tokenization_layoutxlm import LayoutXLMTokenizer
 
     if is_tokenizers_available():
         from .tokenization_layoutxlm_fast import LayoutXLMTokenizerFast
-
-    if is_vision_available():
-        from .processing_layoutlmv2 import LayoutXLMProcessor
 
 else:
     import sys

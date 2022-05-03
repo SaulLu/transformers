@@ -23,6 +23,7 @@ from ...utils import _LazyModule, is_tokenizers_available, is_torch_available, i
 
 _import_structure = {
     "configuration_layoutlmv2": ["LAYOUTLMV2_PRETRAINED_CONFIG_ARCHIVE_MAP", "LayoutLMv2Config"],
+    "processing_layoutlmv2": ["LayoutLMv2Processor"],
     "tokenization_layoutlmv2": ["LayoutLMv2Tokenizer"],
 }
 
@@ -31,7 +32,6 @@ if is_tokenizers_available():
 
 if is_vision_available():
     _import_structure["feature_extraction_layoutlmv2"] = ["LayoutLMv2FeatureExtractor"]
-    _import_structure["processing_layoutlmv2"] = ["LayoutLMv2Processor"]
 
 if is_torch_available():
     _import_structure["modeling_layoutlmv2"] = [
@@ -46,6 +46,7 @@ if is_torch_available():
 
 if TYPE_CHECKING:
     from .configuration_layoutlmv2 import LAYOUTLMV2_PRETRAINED_CONFIG_ARCHIVE_MAP, LayoutLMv2Config
+    from .processing_layoutlmv2 import LayoutLMv2Processor
     from .tokenization_layoutlmv2 import LayoutLMv2Tokenizer
 
     if is_tokenizers_available():
@@ -53,7 +54,6 @@ if TYPE_CHECKING:
 
     if is_vision_available():
         from .feature_extraction_layoutlmv2 import LayoutLMv2FeatureExtractor
-        from .processing_layoutlmv2 import LayoutLMv2Processor
 
     if is_torch_available():
         from .modeling_layoutlmv2 import (
